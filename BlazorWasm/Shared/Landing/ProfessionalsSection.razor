@@ -10,7 +10,7 @@
                     <p class="text-uppercase text-muted small mb-1">@Subtitle</p>
                     <h2>@Title</h2>
                 </div>
-                <button class="btn btn-link text-decoration-none">@CtaText <i class="@CtaIconClass ms-1"></i></button>
+                <button class="btn btn-link text-decoration-none" @onclick="() => Navigation.NavigateTo(ProfessionalsRoot)">@CtaText <i class="@CtaIconClass ms-1"></i></button>
             </div>
 
             <div id="@CarouselId" class="carousel slide" data-bs-ride="carousel" data-bs-interval="9000">
@@ -33,7 +33,7 @@
                                                 <p class="small text-uppercase fw-semibold text-secondary">@professional.City</p>
                                                 <div class="d-flex justify-content-between align-items-center">
                                                     <span class="text-muted small">@professional.Projects proyectos</span>
-                                                    <button class="btn btn-sm btn-outline-primary rounded-pill">Contactar</button>
+                                                    <button class="btn btn-sm btn-outline-primary rounded-pill" @onclick="() => NavigateToProfessional(professional.Slug)">Contactar</button>
                                                 </div>
                                             </div>
                                         </div>
@@ -66,6 +66,9 @@
 </section>
 
 @code {
+    [Inject]
+    private NavigationManager Navigation { get; set; } = default!;
+
     [Parameter]
     public string SectionId { get; set; } = string.Empty;
 
@@ -93,5 +96,10 @@
     [Parameter, EditorRequired]
     public IReadOnlyList<TrustStatModel> TrustStats { get; set; } = Array.Empty<TrustStatModel>();
 
+    [Parameter]
+    public string ProfessionalsRoot { get; set; } = "/search";
+
     private IEnumerable<ProfessionalModel[]> Slides => Professionals.Chunk(3);
+
+    private void NavigateToProfessional(string slug) => Navigation.NavigateTo($"/profesional/{slug}");
 }

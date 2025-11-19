@@ -31,16 +31,89 @@
                         </div>
                     </form>
                 </div>
+                <div class="d-flex flex-wrap gap-3 align-items-center mt-3">
+                    <button class="btn btn-outline-primary" type="button" data-bs-toggle="modal" data-bs-target="#customSearchModal">
+                        <i class="fa-solid fa-sliders me-2"></i> Búsqueda personalizada
+                    </button>
+                    <div class="d-flex flex-wrap gap-2 small text-muted">
+                        <span class="badge bg-primary-subtle text-primary">Categoría: @FilterLabel(selectedCategory)</span>
+                        <span class="badge bg-secondary-subtle text-secondary">Ciudad: @FilterLabel(selectedCity)</span>
+                        <span class="badge bg-info-subtle text-info">Presupuesto: @PriceLabel(selectedPriceRange)</span>
+                        @if (expressOnly)
+                        {
+                            <span class="badge bg-success-subtle text-success">Express prioritario</span>
+                        }
+                    </div>
+                </div>
             </div>
 
-            <div class="row g-4">
-                <div class="col-12 col-lg-4">
-                    <div class="surface-card h-100 search-filters">
-                        <div class="d-flex align-items-center gap-2 mb-3">
-                            <span class="badge bg-primary-subtle text-primary px-3 py-2">Búsqueda personalizada</span>
-                            <h5 class="mb-0">Ajustá tus necesidades</h5>
+            <div class="surface-card">
+                <div class="d-flex justify-content-between align-items-center mb-3 flex-column flex-lg-row gap-2">
+                    <div class="d-flex align-items-center gap-2">
+                        <h5 class="mb-0">@FilteredResults.Count() resultados</h5>
+                        <span class="text-muted">Mostrando servicios destacados para tu hogar</span>
+                    </div>
+                    <button class="btn btn-sm btn-outline-secondary" type="button" data-bs-toggle="modal" data-bs-target="#customSearchModal">
+                        Ajustar filtros
+                    </button>
+                </div>
+                <div class="row g-3">
+                    @foreach (var result in FilteredResults)
+                    {
+                        <div class="col-12">
+                            <div class="card search-result">
+                                <div class="row g-0 align-items-center">
+                                    <div class="col-12 col-md-3">
+                                        <div class="ratio ratio-4x3">
+                                            <img src="@result.ImageUrl" alt="@result.Title" class="rounded-start" />
+                                        </div>
+                                    </div>
+                                    <div class="col-12 col-md-6">
+                                        <div class="card-body">
+                                            <div class="d-flex align-items-center gap-2 mb-2">
+                                                <span class="badge rounded-pill bg-primary-subtle text-primary">@result.Category</span>
+                                                <span class="badge rounded-pill bg-secondary-subtle text-secondary">@result.City</span>
+                                                @if (result.ExpressAvailable)
+                                                {
+                                                    <span class="badge rounded-pill bg-success-subtle text-success">Express</span>
+                                                }
+                                            </div>
+                                            <h5 class="card-title mb-1">@result.Title</h5>
+                                            <p class="card-text text-muted mb-2">@result.Description</p>
+                                            <small class="text-muted">Última calificación: @result.Rating.ToString("0.0", CultureInfo.InvariantCulture) ⭐</small>
+                                        </div>
+                                    </div>
+                                    <div class="col-12 col-md-3 d-flex flex-column align-items-start align-items-md-end gap-2 p-3">
+                                        <div class="price-tag">@result.Price.ToString("C0", LocalCulture)</div>
+                                        <button class="btn btn-outline-primary w-100" @onclick="() => GoToService(result.Slug)">Ver detalles</button>
+                                        <button class="btn btn-primary w-100" @onclick="() => GoToService(result.Slug)">Solicitar ahora</button>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
-                        <div class="mb-3">
+                    }
+
+                    @if (!FilteredResults.Any())
+                    {
+                        <div class="col-12">
+                            <div class="alert alert-info mb-0">No encontramos resultados con esos filtros. Probá ajustar la búsqueda personalizada.</div>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <div class="modal fade" id="customSearchModal" tabindex="-1" aria-labelledby="customSearchModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="customSearchModalLabel">Búsqueda personalizada</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row g-3">
+                        <div class="col-md-6">
                             <label class="form-label fw-semibold">Categoría</label>
                             <select class="form-select" @bind="selectedCategory">
                                 <option value="todas">Todas</option>
@@ -50,7 +123,7 @@
                                 }
                             </select>
                         </div>
-                        <div class="mb-3">
+                        <div class="col-md-6">
                             <label class="form-label fw-semibold">Ciudad</label>
                             <select class="form-select" @bind="selectedCity">
                                 <option value="todas">Todas</option>
@@ -60,7 +133,7 @@
                                 }
                             </select>
                         </div>
-                        <div class="mb-3">
+                        <div class="col-md-6">
                             <label class="form-label fw-semibold">Presupuesto</label>
                             <select class="form-select" @bind="selectedPriceRange">
                                 <option value="cualquiera">Cualquiera</option>
@@ -70,65 +143,21 @@
                                 <option value="80000+">Más de $80.000</option>
                             </select>
                         </div>
-                        <div class="form-check mb-3">
-                            <input class="form-check-input" type="checkbox" id="expressCheck" @bind="expressOnly" />
-                            <label class="form-check-label" for="expressCheck">Necesito atención express</label>
+                        <div class="col-md-6 d-flex align-items-end">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="expressCheck" @bind="expressOnly" />
+                                <label class="form-check-label" for="expressCheck">Necesito atención express</label>
+                            </div>
                         </div>
-                        <button class="btn btn-primary w-100" type="button" @onclick="ApplyFilters">Aplicar filtros</button>
                     </div>
                 </div>
-                <div class="col-12 col-lg-8">
-                    <div class="d-flex justify-content-between align-items-center mb-3">
-                        <h5 class="mb-0">@FilteredResults.Count() resultados</h5>
-                        <span class="text-muted">Mostrando servicios destacados para tu hogar</span>
-                    </div>
-                    <div class="row g-3">
-                        @foreach (var result in FilteredResults)
-                        {
-                            <div class="col-12">
-                                <div class="card search-result">
-                                    <div class="row g-0 align-items-center">
-                                        <div class="col-12 col-md-3">
-                                            <div class="ratio ratio-4x3">
-                                                <img src="@result.ImageUrl" alt="@result.Title" class="rounded-start" />
-                                            </div>
-                                        </div>
-                                        <div class="col-12 col-md-6">
-                                            <div class="card-body">
-                                                <div class="d-flex align-items-center gap-2 mb-2">
-                                                    <span class="badge rounded-pill bg-primary-subtle text-primary">@result.Category</span>
-                                                    <span class="badge rounded-pill bg-secondary-subtle text-secondary">@result.City</span>
-                                                    @if (result.ExpressAvailable)
-                                                    {
-                                                        <span class="badge rounded-pill bg-success-subtle text-success">Express</span>
-                                                    }
-                                                </div>
-                                                <h5 class="card-title mb-1">@result.Title</h5>
-                                                <p class="card-text text-muted mb-2">@result.Description</p>
-                                                <small class="text-muted">Última calificación: @result.Rating.ToString("0.0", CultureInfo.InvariantCulture) ⭐</small>
-                                            </div>
-                                        </div>
-                                        <div class="col-12 col-md-3 d-flex flex-column align-items-start align-items-md-end gap-2 p-3">
-                                            <div class="price-tag">@result.Price.ToString("C0", LocalCulture)</div>
-                                            <button class="btn btn-outline-primary w-100">Ver detalles</button>
-                                            <button class="btn btn-primary w-100">Solicitar ahora</button>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        }
-
-                        @if (!FilteredResults.Any())
-                        {
-                            <div class="col-12">
-                                <div class="alert alert-info mb-0">No encontramos resultados con esos filtros. Probá ajustar la búsqueda personalizada.</div>
-                            </div>
-                        }
-                    </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cerrar</button>
+                    <button type="button" class="btn btn-primary" data-bs-dismiss="modal" @onclick="ApplyFilters">Aplicar filtros</button>
                 </div>
             </div>
         </div>
-    </main>
+    </div>
 
     <LandingFooter FooterId="contacto-search"
                    Brand="ServicioAhora!"
@@ -188,17 +217,17 @@
 
     private readonly IReadOnlyList<SearchResult> Results = new List<SearchResult>
     {
-        new("Limpieza profunda integral", "Equipos especializados para dejar tu casa impecable en horas.", "Limpieza", "Buenos Aires",
+        new("limpieza-profunda-integral", "Limpieza profunda integral", "Equipos especializados para dejar tu casa impecable en horas.", "Limpieza", "Buenos Aires",
             "https://images.unsplash.com/photo-1581578731548-c64695cc6952?auto=format&fit=crop&w=900&q=60", 32000, 4.9, true),
-        new("Mantenimiento de jardines", "Corte, fertilización y diseño sustentable para tus espacios verdes.", "Jardinería", "Rosario",
+        new("mantenimiento-de-jardines", "Mantenimiento de jardines", "Corte, fertilización y diseño sustentable para tus espacios verdes.", "Jardinería", "Rosario",
             "https://images.unsplash.com/photo-1501004318641-b39e6451bec6?auto=format&fit=crop&w=900&q=60", 28000, 4.8, false),
-        new("Reparación eléctrica segura", "Diagnóstico y solución de instalaciones y luminarias.", "Electricidad", "Córdoba",
+        new("reparacion-electrica-segura", "Reparación eléctrica segura", "Diagnóstico y solución de instalaciones y luminarias.", "Electricidad", "Córdoba",
             "https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?auto=format&fit=crop&w=900&q=60", 45000, 4.7, true),
-        new("Plomería express", "Resolución de fugas, destapaciones y cambio de griferías en el día.", "Plomería", "Mendoza",
+        new("plomeria-express", "Plomería express", "Resolución de fugas, destapaciones y cambio de griferías en el día.", "Plomería", "Mendoza",
             "https://images.unsplash.com/photo-1544723795-432537f4aa73?auto=format&fit=crop&w=900&q=60", 36000, 4.6, true),
-        new("Pintura y retoques", "Renová ambientes con combinaciones modernas y materiales lavables.", "Decoración", "La Plata",
+        new("pintura-y-retoques", "Pintura y retoques", "Renová ambientes con combinaciones modernas y materiales lavables.", "Decoración", "La Plata",
             "https://images.unsplash.com/photo-1489515217757-5fd1be406fef?auto=format&fit=crop&w=900&q=60", 52000, 4.9, false),
-        new("Asistencia para electrodomésticos", "Servicio técnico para heladeras, lavarropas y climatización.", "Electrodomésticos", "Neuquén",
+        new("asistencia-para-electrodomesticos", "Asistencia para electrodomésticos", "Servicio técnico para heladeras, lavarropas y climatización.", "Electrodomésticos", "Neuquén",
             "https://images.unsplash.com/photo-1523419409543-0c1df022bddb?auto=format&fit=crop&w=900&q=60", 40000, 4.8, false)
     };
 
@@ -226,6 +255,19 @@
 
     private void ApplyFilters() => StateHasChanged();
 
+    private string FilterLabel(string value) => string.Equals(value, "todas", StringComparison.OrdinalIgnoreCase) ? "Todas" : value;
+
+    private string PriceLabel(string value) => value switch
+    {
+        "0-30000" => "Hasta $30.000",
+        "30000-50000" => "$30.000 - $50.000",
+        "50000-80000" => "$50.000 - $80.000",
+        "80000+" => "Más de $80.000",
+        _ => "Cualquiera"
+    };
+
+    private void GoToService(string slug) => Navigation.NavigateTo($"/servicio/{slug}");
+
     private bool FilterByPrice(SearchResult result)
     {
         return selectedPriceRange switch
@@ -238,5 +280,5 @@
         };
     }
 
-    private record SearchResult(string Title, string Description, string Category, string City, string ImageUrl, decimal Price, double Rating, bool ExpressAvailable);
+    private record SearchResult(string Slug, string Title, string Description, string Category, string City, string ImageUrl, decimal Price, double Rating, bool ExpressAvailable);
 }
