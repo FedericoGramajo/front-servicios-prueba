@@ -43,6 +43,13 @@ body {
     background: transparent;
 }
 
+.search-bar .form-control:focus,
+.search-bar .btn:focus,
+.search-bar .input-group-text:focus {
+    box-shadow: 0 0 0 0.18rem rgba(249, 115, 22, 0.25);
+    outline: none;
+}
+
 .nav-menu .nav-link {
     border-radius: 999px;
     color: var(--landing-dark);
