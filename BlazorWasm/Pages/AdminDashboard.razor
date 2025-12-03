@@ -63,7 +63,7 @@
                 </div>
                 <div class="d-flex gap-2">
                     <input class="form-control" placeholder="Buscar rubro" />
-                    <button class="btn btn-primary">Agregar rubro</button>
+                    <button class="btn btn-primary" @onclick="OpenAddCategory">Agregar rubro</button>
                 </div>
             </div>
             <div class="table-responsive">
@@ -85,7 +85,7 @@
                                 <td><span class="status-pill completado">@category.Visibility</span></td>
                                 <td class="text-end">
                                     <div class="d-flex justify-content-end gap-2">
-                                        <button class="btn btn-outline-primary btn-sm">Editar</button>
+                                        <button class="btn btn-outline-primary btn-sm" @onclick="() => OpenEditCategory(category)">Editar</button>
                                         <button class="btn btn-outline-danger btn-sm">Eliminar</button>
                                     </div>
                                 </td>
@@ -258,6 +258,54 @@
         </section>
     </main>
 
+    @if (ShowAddCategoryModal)
+    {
+        <div class="modal fade show" style="display:block;" tabindex="-1" role="dialog" aria-modal="true">
+            <div class="modal-dialog modal-dialog-centered" role="document">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Agregar rubro</h5>
+                        <button type="button" class="btn-close" aria-label="Cerrar" @onclick="CloseModals"></button>
+                    </div>
+                    <div class="modal-body">
+                        <label class="form-label">Nombre del rubro</label>
+                        <input class="form-control" placeholder="Ej: Pintura decorativa" @bind="NewCategoryName" />
+                        <small class="text-muted">Creá un nombre claro para el nuevo rubro disponible en catálogo.</small>
+                    </div>
+                    <div class="modal-footer">
+                        <button class="btn btn-outline-secondary" @onclick="CloseModals">Cancelar</button>
+                        <button class="btn btn-primary" @onclick="SaveNewCategory">Guardar</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="modal-backdrop fade show"></div>
+    }
+
+    @if (ShowEditCategoryModal && CategoryToEdit is not null)
+    {
+        <div class="modal fade show" style="display:block;" tabindex="-1" role="dialog" aria-modal="true">
+            <div class="modal-dialog modal-dialog-centered" role="document">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Editar rubro</h5>
+                        <button type="button" class="btn-close" aria-label="Cerrar" @onclick="CloseModals"></button>
+                    </div>
+                    <div class="modal-body">
+                        <label class="form-label">Nombre del rubro</label>
+                        <input class="form-control" @bind="EditingCategoryName" />
+                        <small class="text-muted">Actualizá el nombre visible de @CategoryToEdit.Name.</small>
+                    </div>
+                    <div class="modal-footer">
+                        <button class="btn btn-outline-secondary" @onclick="CloseModals">Cancelar</button>
+                        <button class="btn btn-primary" @onclick="SaveEditedCategory">Guardar cambios</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="modal-backdrop fade show"></div>
+    }
+
     <LandingFooter FooterId="contacto-panel-administrador"
                    Brand="ServicioAhora!"
                    Description="Coordinamos servicios hogareños confiables con soporte humano y seguimiento en tiempo real."
@@ -307,7 +355,7 @@
         })
     };
 
-    private readonly IReadOnlyList<CategoryRow> Categories = new List<CategoryRow>
+    private List<CategoryRow> Categories = new()
     {
         new("Limpieza y orden", 12, "Visible"),
         new("Mantenimiento y reparaciones", 18, "Visible"),
@@ -334,6 +382,61 @@
     private record CategoryRow(string Name, int Services, string Visibility);
     private record ServiceRow(string Name, string Category, decimal Price);
     private record ProfessionalRow(string Name, string Specialty, int Services);
+
+    private bool ShowAddCategoryModal { get; set; }
+    private bool ShowEditCategoryModal { get; set; }
+    private string NewCategoryName { get; set; } = string.Empty;
+    private string EditingCategoryName { get; set; } = string.Empty;
+    private CategoryRow? CategoryToEdit { get; set; }
+
+    private void OpenAddCategory()
+    {
+        ShowAddCategoryModal = true;
+        NewCategoryName = string.Empty;
+        ShowEditCategoryModal = false;
+    }
+
+    private void OpenEditCategory(CategoryRow category)
+    {
+        CategoryToEdit = category;
+        EditingCategoryName = category.Name;
+        ShowEditCategoryModal = true;
+        ShowAddCategoryModal = false;
+    }
+
+    private void CloseModals()
+    {
+        ShowAddCategoryModal = false;
+        ShowEditCategoryModal = false;
+        CategoryToEdit = null;
+    }
+
+    private void SaveNewCategory()
+    {
+        if (!string.IsNullOrWhiteSpace(NewCategoryName))
+        {
+            Categories.Add(new CategoryRow(NewCategoryName.Trim(), 0, "Visible"));
+        }
+
+        CloseModals();
+    }
+
+    private void SaveEditedCategory()
+    {
+        if (CategoryToEdit is null)
+        {
+            return;
+        }
+
+        var index = Categories.FindIndex(c => c == CategoryToEdit);
+
+        if (index >= 0 && !string.IsNullOrWhiteSpace(EditingCategoryName))
+        {
+            Categories[index] = CategoryToEdit with { Name = EditingCategoryName.Trim() };
+        }
+
+        CloseModals();
+    }
 
     private int CurrentYear => DateTime.Now.Year;
 }
