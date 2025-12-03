@@ -633,10 +633,11 @@ body {
 
 .bar-track {
     position: relative;
-    background: rgba(15, 42, 60, 0.08);
+    background: linear-gradient(90deg, rgba(15, 42, 60, 0.06), rgba(15, 42, 60, 0.12));
     border-radius: 999px;
-    height: 12px;
+    height: 14px;
     overflow: hidden;
+    box-shadow: inset 0 1px 2px rgba(15, 23, 42, 0.08);
 }
 
 .bar-fill {
@@ -644,8 +645,10 @@ body {
     left: 0;
     top: 0;
     bottom: 0;
-    background: linear-gradient(90deg, var(--landing-primary), #44c08b);
+    min-width: 6%;
+    background: linear-gradient(90deg, #0ea370, #1cc57e 50%, #57d6a2);
     border-radius: 999px;
+    box-shadow: 0 6px 18px rgba(14, 163, 112, 0.25);
 }
 
 .bar-value {
