@@ -2,6 +2,8 @@
 @using System.Collections.Generic
 @using System.Globalization
 @using System.Linq
+@using ClientLibrary.Models.Authentication.Rol.Professional
+@using ClientLibrary.Models.ServicioAhora.ServOffering
 
 <PageTitle>Panel administrador - ServicioAhora!</PageTitle>
 
@@ -140,8 +142,8 @@
                         {
                             <tr>
                                 <td>@service.Name</td>
-                                <td>@service.Category</td>
-                                <td>@service.Price.ToString("C0", LocalCulture)</td>
+                                <td>@service.CategoryName</td>
+                                <td>@service.BasePrice.ToString("C0", LocalCulture)</td>
                                 <td class="text-end">
                                     <div class="d-flex justify-content-end gap-2">
                                         <button class="btn btn-outline-primary btn-sm">Editar</button>
@@ -186,9 +188,9 @@
                         @foreach (var professional in Professionals)
                         {
                             <tr>
-                                <td>@professional.Name</td>
-                                <td>@professional.Specialty</td>
-                                <td>@professional.Services</td>
+                                <td>@professional.FullName</td>
+                                <td>@string.Join(", ", professional.Categories)</td>
+                                <td>@professional.ServicesCount</td>
                                 <td class="text-end">
                                     <div class="d-flex justify-content-end gap-2">
                                         <button class="btn btn-outline-primary btn-sm">Ver perfil</button>
@@ -409,22 +411,8 @@
     };
 
     private List<GetCategory> Categories { get; set; } = new();
-
-    private readonly IReadOnlyList<ServiceRow> Services = new List<ServiceRow>
-    {
-        new("Limpieza profunda integral", "Limpieza y orden", 32000m),
-        new("Retoques finos y protección", "Mantenimiento y reparaciones", 22000m),
-        new("Asistencia para electrodomésticos", "Limpieza y orden", 26000m),
-        new("Orden de patios y balcones", "Jardinería", 20000m)
-    };
-
-    private readonly IReadOnlyList<ProfessionalRow> Professionals = new List<ProfessionalRow>
-    {
-        new("Laura Fernández", "Limpieza y orden", 4),
-        new("Mateo Álvarez", "Mantenimiento y reparaciones", 5),
-        new("Valentina Castro", "Jardinería", 3),
-        new("Jeremías Luna", "Plomería", 4)
-    };
+    private List<GetServiceOffering> Services { get; set; } = new();
+    private List<GetProfessional> Professionals { get; set; } = new();
 
     private readonly IReadOnlyList<ReportBar> CategoryReportData = new List<ReportBar>
     {
@@ -442,8 +430,6 @@
         new("Canceladas", 5)
     };
 
-    private record ServiceRow(string Name, string Category, decimal Price);
-    private record ProfessionalRow(string Name, string Specialty, int Services);
     private record ReportBar(string Label, int Count)
     {
         public double Percentage(int max)
@@ -472,6 +458,8 @@
     {
         var categories = await categoryService.GetAllAsync();
         Categories = categories?.ToList() ?? new List<GetCategory>();
+        BuildSampleServices();
+        BuildSampleProfessionals();
     }
 
     private void OpenAddCategory()
@@ -545,4 +533,128 @@
     private int CurrentYear => DateTime.Now.Year;
     private int CategoryMax => CategoryReportData.Max(r => r.Count);
     private int StatusMax => StatusReportData.Max(r => r.Count);
+
+    private void BuildSampleServices()
+    {
+        var defaultCategory = Categories.FirstOrDefault();
+        var cleaning = Categories.FirstOrDefault(c => c.Name.Contains("Limpieza", StringComparison.OrdinalIgnoreCase)) ?? defaultCategory;
+        var maintenance = Categories.FirstOrDefault(c => c.Name.Contains("Mantenimiento", StringComparison.OrdinalIgnoreCase)) ?? defaultCategory;
+        var garden = Categories.FirstOrDefault(c => c.Name.Contains("Jardiner", StringComparison.OrdinalIgnoreCase)) ?? defaultCategory;
+
+        Services = new List<GetServiceOffering>
+        {
+            new()
+            {
+                Id = Guid.NewGuid(),
+                Name = "Limpieza profunda integral",
+                Description = "Limpieza completa de ambientes y superficies.",
+                BasePrice = 32000m,
+                EstimatedDuration = 3,
+                Status = true,
+                CategoryId = cleaning?.Id ?? Guid.Empty,
+                CategoryName = cleaning?.Name ?? "Limpieza",
+                ProfessionalId = "prof-001",
+                ProfessionalFullName = "Laura Fernández",
+                CreatedAt = DateTime.Now.AddDays(-15),
+                UpdatedAt = DateTime.Now.AddDays(-2)
+            },
+            new()
+            {
+                Id = Guid.NewGuid(),
+                Name = "Retoques finos y protección",
+                Description = "Sellado y terminaciones delicadas para paredes y techos.",
+                BasePrice = 22000m,
+                EstimatedDuration = 2,
+                Status = true,
+                CategoryId = maintenance?.Id ?? cleaning?.Id ?? Guid.Empty,
+                CategoryName = maintenance?.Name ?? cleaning?.Name ?? "Mantenimiento",
+                ProfessionalId = "prof-002",
+                ProfessionalFullName = "Mateo Álvarez",
+                CreatedAt = DateTime.Now.AddDays(-22),
+                UpdatedAt = DateTime.Now.AddDays(-5)
+            },
+            new()
+            {
+                Id = Guid.NewGuid(),
+                Name = "Asistencia para electrodomésticos",
+                Description = "Chequeo y limpieza de filtros y drenajes.",
+                BasePrice = 26000m,
+                EstimatedDuration = 2,
+                Status = true,
+                CategoryId = cleaning?.Id ?? Guid.Empty,
+                CategoryName = cleaning?.Name ?? "Limpieza",
+                ProfessionalId = "prof-003",
+                ProfessionalFullName = "Valentina Castro",
+                CreatedAt = DateTime.Now.AddDays(-10),
+                UpdatedAt = DateTime.Now.AddDays(-1)
+            },
+            new()
+            {
+                Id = Guid.NewGuid(),
+                Name = "Orden de patios y balcones",
+                Description = "Organización y limpieza de espacios exteriores.",
+                BasePrice = 20000m,
+                EstimatedDuration = 3,
+                Status = true,
+                CategoryId = garden?.Id ?? Guid.Empty,
+                CategoryName = garden?.Name ?? "Jardinería",
+                ProfessionalId = "prof-004",
+                ProfessionalFullName = "Jeremías Luna",
+                CreatedAt = DateTime.Now.AddDays(-30),
+                UpdatedAt = DateTime.Now.AddDays(-3)
+            }
+        };
+    }
+
+    private void BuildSampleProfessionals()
+    {
+        var cleaning = Categories.FirstOrDefault(c => c.Name.Contains("Limpieza", StringComparison.OrdinalIgnoreCase))?.Name ?? "Limpieza";
+        var maintenance = Categories.FirstOrDefault(c => c.Name.Contains("Mantenimiento", StringComparison.OrdinalIgnoreCase))?.Name ?? "Mantenimiento";
+        var garden = Categories.FirstOrDefault(c => c.Name.Contains("Jardiner", StringComparison.OrdinalIgnoreCase))?.Name ?? "Jardinería";
+        var plumbing = Categories.FirstOrDefault(c => c.Name.Contains("Plomer", StringComparison.OrdinalIgnoreCase))?.Name ?? "Plomería";
+
+        Professionals = new List<GetProfessional>
+        {
+            new()
+            {
+                AppUserId = "prof-001",
+                FullName = "Laura Fernández",
+                Email = "laura@servicioahora.com",
+                Licenses = new List<string> { "LIC-9081" },
+                Categories = new List<string> { cleaning },
+                ServicesCount = 4,
+                AvgRating = 4.7
+            },
+            new()
+            {
+                AppUserId = "prof-002",
+                FullName = "Mateo Álvarez",
+                Email = "mateo@servicioahora.com",
+                Licenses = new List<string> { "LIC-7712" },
+                Categories = new List<string> { maintenance },
+                ServicesCount = 5,
+                AvgRating = 4.8
+            },
+            new()
+            {
+                AppUserId = "prof-003",
+                FullName = "Valentina Castro",
+                Email = "valentina@servicioahora.com",
+                Licenses = new List<string> { "LIC-6625" },
+                Categories = new List<string> { cleaning, garden },
+                ServicesCount = 3,
+                AvgRating = 4.6
+            },
+            new()
+            {
+                AppUserId = "prof-004",
+                FullName = "Jeremías Luna",
+                Email = "jeremias@servicioahora.com",
+                Licenses = new List<string> { "LIC-5540" },
+                Categories = new List<string> { plumbing },
+                ServicesCount = 4,
+                AvgRating = 4.5
+            }
+        };
+    }
 }
