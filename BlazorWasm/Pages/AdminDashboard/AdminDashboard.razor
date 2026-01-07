@@ -48,9 +48,9 @@
 
     <CategoryModals ShowAddCategoryModal="ShowAddCategoryModal"
                     ShowEditCategoryModal="ShowEditCategoryModal"
+                    CategoryToEdit="CategoryToEdit"
                     @bind-NewCategoryName="NewCategoryName"
                     @bind-EditingCategoryName="EditingCategoryName"
-                    OriginalCategoryName="@OriginalCategoryName"
                     OnClose="CloseModals"
                     OnSaveNew="SaveNewCategory"
                     OnSaveEdit="SaveEditedCategory" />
@@ -97,11 +97,11 @@
     private readonly IReadOnlyList<FooterGroupModel> FooterGroups = new List<FooterGroupModel>
     {
         new("Explorá más", new []
-    {
+        {
             new FooterLinkModel("Servicios", "/#services"),
             new FooterLinkModel("Profesionales", "/profesionales"),
             new FooterLinkModel("Garantías", "/#garantias")
-    })
+        })
     };
 
     private List<GetCategory> Categories { get; set; } = new();
@@ -136,7 +136,6 @@
     private bool ShowEditCategoryModal { get; set; }
     private string NewCategoryName { get; set; } = string.Empty;
     private string EditingCategoryName { get; set; } = string.Empty;
-    private string OriginalCategoryName { get; set; } = string.Empty;
     private GetCategory? CategoryToEdit { get; set; }
 
     private int CurrentYear => DateTime.Now.Year;
