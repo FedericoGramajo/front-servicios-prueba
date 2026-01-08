@@ -39,6 +39,22 @@ namespace ClientLibrary.Services
                 await apiHelper.GetServiceResponse<LoginResponse>(result);
         }
 
+        public async Task<LoginResponse> RequestPasswordReset(RequestPasswordReset user)
+        {
+            var client = httpClient.GetPublicClient();
+            var apiCall = new ApiCall
+            {
+                Route = Constant.Authentication.RequestPasswordReset,
+                Type = Constant.ApiCallType.Get,
+                Client = client,
+                Id = null!,
+                Model = user
+            };
+            var result = await apiHelper.ApiCallTypeCall<RequestPasswordReset>(apiCall);
+            return result == null ? new LoginResponse(Message: apiHelper.ConnectionError().Message) :
+                await apiHelper.GetServiceResponse<LoginResponse>(result);
+        }
+
         public async Task<LoginResponse> ReviveToken(string refreshToken)
         {
             var client = httpClient.GetPublicClient();

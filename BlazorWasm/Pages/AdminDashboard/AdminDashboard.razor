@@ -137,6 +137,7 @@
     private string NewCategoryName { get; set; } = string.Empty;
     private string EditingCategoryName { get; set; } = string.Empty;
     private GetCategory? CategoryToEdit { get; set; }
+    private string OriginalCategoryName { get; set; } = string.Empty;
 
     private int CurrentYear => DateTime.Now.Year;
     private int CategoryMax => CategoryReportData.Max(r => r.Count);

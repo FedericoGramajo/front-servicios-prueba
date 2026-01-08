@@ -31,10 +31,11 @@ namespace ClientLibrary.Helper
         }
         public static class Authentication
         {
-            public const string Type        = "Bearer";
-            public const string Register    = "authentication/register";
-            public const string Login       = "authentication/login";
-            public const string ReviveToken = "authentication/refreshToken";
+            public const string Type                    = "Bearer";
+            public const string Register                = "authentication/register";
+            public const string Login                   = "authentication/login";
+            public const string ReviveToken             = "authentication/refreshToken";
+            public const string RequestPasswordReset    = "authentication/requestPasswordReset";
         }
         public static class ApiCallType
         {
