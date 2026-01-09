@@ -8,5 +8,6 @@ namespace ClientLibrary.Services
         Task<ServiceResponse> CreateUser(CreateUser user);
         Task<LoginResponse> LoginUser(LoginUser user);
         Task<LoginResponse> ReviveToken(string refreshToken);
+        Task<LoginResponse> RequestPasswordReset(RequestPasswordReset user);
     }
 }
