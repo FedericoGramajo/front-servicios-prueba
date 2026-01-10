@@ -9,5 +9,7 @@ namespace ClientLibrary.Services
         Task<LoginResponse> LoginUser(LoginUser user);
         Task<LoginResponse> ReviveToken(string refreshToken);
         Task<LoginResponse> RequestPasswordReset(RequestPasswordReset user);
+        Task<ServiceResponse> VerifyToken(VerifyToken verifyToken);
+        Task<ServiceResponse> ChangePassword(ChangePassword changePassword);
     }
 }

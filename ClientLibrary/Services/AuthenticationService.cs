@@ -69,5 +69,38 @@ namespace ClientLibrary.Services
             var result = await apiHelper.ApiCallTypeCall<Dummy>(apiCall);
             return result == null ? null! : await apiHelper.GetServiceResponse<LoginResponse>(result);
         }
+
+        public async Task<ServiceResponse> VerifyToken(VerifyToken verifyToken)
+        {
+            var client = httpClient.GetPublicClient();
+            var apiCall = new ApiCall
+            {
+                Route = Constant.Authentication.VerifyToken,
+                Type = Constant.ApiCallType.Post,
+                Client = client,
+                Id = null!,
+                Model = verifyToken
+            };
+
+            var result = await apiHelper.ApiCallTypeCall<VerifyToken>(apiCall);
+            return result == null ? apiHelper.ConnectionError() :
+                await apiHelper.GetServiceResponse<ServiceResponse>(result);
+        }
+        public async Task<ServiceResponse> ChangePassword(ChangePassword changePassword)
+        {
+            var client = httpClient.GetPublicClient();
+            var apiCall = new ApiCall
+            {
+                Route = Constant.Authentication.ChangePassword,
+                Type = Constant.ApiCallType.Post,
+                Client = client,
+                Id = null!,
+                Model = changePassword
+            };
+
+            var result = await apiHelper.ApiCallTypeCall<ChangePassword>(apiCall);
+            return result == null ? apiHelper.ConnectionError() :
+                await apiHelper.GetServiceResponse<ServiceResponse>(result);
+        }
     }
 }

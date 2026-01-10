@@ -35,7 +35,9 @@ namespace ClientLibrary.Helper
             public const string Register                = "authentication/register";
             public const string Login                   = "authentication/login";
             public const string ReviveToken             = "authentication/refreshToken";
-            public const string RequestPasswordReset    = "authentication/requestPasswordReset";
+            public const string RequestPasswordReset    = "authentication/request-password-reset";
+            public const string VerifyToken             = "authentication/verifyToken";
+            public const string ChangePassword          = "authentication/change-password";
         }
         public static class ApiCallType
         {
