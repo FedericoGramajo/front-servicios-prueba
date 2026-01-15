@@ -1,0 +1,119 @@
+@page "/login"
+
+<PageTitle>Iniciar sesión - ServicioAhora!</PageTitle>
+
+<section class="auth-page py-5 py-lg-6">
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-lg-6 col-xl-5">
+                <div class="card auth-card shadow-lg border-0">
+                    <div class="card-body p-4 p-lg-5">
+
+                        <div class="text-center mb-4">
+                            <a class="auth-brand d-inline-flex align-items-center" href="/">
+                                <i class="fa-solid fa-house-chimney me-2"></i>
+                                <span class="fw-bold">ServicioAhora!</span>
+                            </a>
+                            <p class="text-muted mb-0">Accedé a tus reservas y seguimientos</p>
+                        </div>
+
+                        @if (!string.IsNullOrEmpty(Message))
+                        {
+                            <div class="alert alert-@AlertType text-center" role="alert">@Message</div>
+                        }
+
+                        <EditForm Model="Login" OnValidSubmit="LoginUser">
+                            <DataAnnotationsValidator />
+
+                            <div class="mb-3">
+                                <label class="form-label fw-semibold" for="loginEmail">Correo electrónico</label>
+                                <InputText id="loginEmail"
+                                           @bind-Value="Login.Email"
+                                           class="form-control"
+                                           placeholder="tu@email.com"
+                                           required />
+                                <ValidationMessage For="() => Login.Email" />
+                            </div>
+
+                            <div class="mb-3">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <label class="form-label fw-semibold mb-0" for="loginPassword">Contraseña</label>
+                                    <a class="small" href="/forgot-password">¿Olvidaste tu contraseña?</a>
+                                </div>
+                                <InputText id="loginPassword"
+                                           @bind-Value="Login.Password"
+                                           type="password"
+                                           class="form-control"
+                                           placeholder="••••••••"
+                                           required />
+                                <ValidationMessage For="() => Login.Password" />
+                            </div>
+
+                            <div class="form-check mb-4">
+                                <InputCheckbox id="rememberMe" @bind-Value="RememberMe" class="form-check-input" />
+                                <label class="form-check-label" for="rememberMe">Mantener sesión iniciada</label>
+                            </div>
+
+                            <div class="d-grid gap-2">
+                                <button type="submit" class="btn btn-primary btn-lg" disabled="@IsLoading">
+                                    @(IsLoading ? "Iniciando..." : "Iniciar sesión")
+                                </button>
+                                <a class="btn btn-outline-primary" href="/register">Crear cuenta nueva</a>
+                                <a class="btn btn-link" href="/">Volver al inicio</a>
+                            </div>
+                        </EditForm>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+@code {
+    [Parameter] public string? Route { get; set; }
+
+    private string AlertType = string.Empty;
+    private string Message = string.Empty;
+    private bool IsLoading = false;
+    private bool RememberMe = false;
+
+    public LoginUser Login { get; set; } = new();
+
+    private async Task LoginUser()
+    {
+        try
+        {
+            IsLoading = true;
+            Message = string.Empty;
+            AlertType = string.Empty;
+
+            var result = await authenticationService.LoginUser(Login);
+            if (!result.Success)
+            {
+                Message = result.Message ?? "Error al iniciar sesión.";
+                AlertType = "danger";
+                return;
+            }
+
+            // Guardar token en cookie
+            string cookieValue = tokenService.FormToken(result.Token, result.RefreshToken);
+            await tokenService.SetCookie(Constant.Cookie.Name, cookieValue, Constant.Cookie.Seconds, Constant.Cookie.Path);
+
+            // Notificar autenticación
+            (authStateProvider as CustomAuthStateProvider)!.NotifyAuthenticationState();
+
+            // Redirigir según ruta
+            NavManager.NavigateTo(Route is null ? "/" : Route, true);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine(ex);
+            Message = "Ocurrió un error inesperado.";
+            AlertType = "danger";
+        }
+        finally
+        {
+            IsLoading = false;
+        }
+    }
+}
