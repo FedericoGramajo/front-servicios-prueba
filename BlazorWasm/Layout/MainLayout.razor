@@ -9,7 +9,7 @@
                    Brand="ServicioAhora!"
                    BrandHref="@RouteConstants.Home"
                    Search="@SearchBar"
-                   AccountLinks="@AccountActions"
+                   AccountLinks="@AccountLinks"
                    NavLinks="@PrimaryNavLinks" />
 
     <main>
@@ -27,9 +27,12 @@
 </div>
 
 @code {
+    [Inject]
+    private AuthenticationStateProvider AuthStateProvider { get; set; } = default!;
+
     private readonly SearchConfig SearchBar = new("Buscar servicios hogareños en ServicioAhora!", "Buscar");
 
-    private readonly IReadOnlyList<MenuActionModel> AccountActions = MenuConstants.AccountActions;
+    private List<MenuActionModel> AccountLinks { get; set; } = new();
     private readonly IReadOnlyList<NavLinkModel> PrimaryNavLinks = MenuConstants.PrimaryNavLinks;
 
     private readonly IReadOnlyList<string> FooterContact = new List<string>
@@ -50,4 +53,45 @@
     };
 
     private int CurrentYear => DateTime.Now.Year;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await UpdateMenu();
+        AuthStateProvider.AuthenticationStateChanged += async _ => await UpdateMenu();
+    }
+
+    private async Task UpdateMenu()
+    {
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        var user = authState.User;
+
+        var links = new List<MenuActionModel>();
+
+        if (user.Identity?.IsAuthenticated == true)
+        {
+            // Common for all logged in users
+            links.Add(new("Mi perfil", RouteConstants.ClientDashboard)); // Or query string logic if needed
+
+            if (user.IsInRole(Constant.Administration.AdminRole))
+            {
+                links.Add(new("Panel administrador", RouteConstants.AdminDashboard));
+            }
+
+            if (user.IsInRole(Constant.Administration.ProfessionalRole))
+            {
+                links.Add(new("Panel profesional", RouteConstants.ProfessionalDashboard));
+            }
+
+            links.Add(new("Cerrar sesión", RouteConstants.Logout));
+        }
+        else
+        {
+            // Not logged in
+            links.Add(new("Iniciar sesión", RouteConstants.Login));
+            links.Add(new("Registrarse", RouteConstants.Register));
+        }
+
+        AccountLinks = links;
+        StateHasChanged();
+    }
 }

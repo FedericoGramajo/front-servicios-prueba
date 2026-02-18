@@ -1,5 +1,6 @@
 @inject IProfessionalDashboardService DashboardService
 @inject IJSRuntime JS
+@inject AuthenticationStateProvider AuthStateProvider
 
 <div class="row g-4">
     <div class="col-lg-4">
@@ -20,8 +21,8 @@
                         <input type="time" class="form-control" @bind="NewEndTime" />
                     </div>
             </div>
-            <button class="btn btn-primary w-100" @onclick="AddAvailability">
-                <i class="fa-solid fa-plus me-2"></i> Agregar horario
+            <button class="btn btn-primary w-100" @onclick="AddAvailability" disabled="@IsLoading">
+                <i class="fa-solid fa-plus me-2"></i> @(IsLoading ? "Agregando..." : "Agregar horario")
             </button>
         </div>
     </div>
@@ -49,16 +50,8 @@
                         {
                             <tr>
                                 <td>
-                                    @if (item.SpecificDate.HasValue)
-                                    {
-                                            <span class="fw-semibold">@item.SpecificDate.Value.ToString("dd MMM yyyy", LocalCulture)</span>
-                                            <small class="text-muted d-block">@LocalCulture.DateTimeFormat.GetDayName(item.DayOfWeek)</small>
-                                    }
-                                    else
-                                    {
-                                        <span class="fw-semibold">@(DayNames.ContainsKey((int)item.DayOfWeek) ? DayNames[(int)item.DayOfWeek] : "Desconocido")</span>
-                                        <small class="text-muted d-block">Recurrente</small>
-                                    }
+                                    <span class="fw-semibold">@item.Date.ToString("dd MMM yyyy", LocalCulture)</span>
+                                    <small class="text-muted d-block">@LocalCulture.DateTimeFormat.GetDayName(item.DayOfWeek)</small>
                                 </td>
                                 <td>
                                     <div class="d-flex align-items-center gap-2">
@@ -67,7 +60,7 @@
                                     </div>
                                 </td>
                                 <td class="text-end">
-                                    <button class="btn btn-outline-danger btn-sm" @onclick="() => RemoveAvailability(item.Id)">
+                                    <button class="btn btn-outline-danger btn-sm" @onclick="() => RemoveAvailability(item.Id)" disabled="@IsLoading">
                                         <i class="fa-solid fa-trash"></i>
                                     </button>
                                 </td>
@@ -86,22 +79,32 @@
 
     private List<DateTime> SelectedDates { get; set; } = new();
     private DateTime NewStartTime { get; set; } = DateTime.Today.AddHours(9); 
-    private DateTime NewEndTime { get; set; } = DateTime.Today.AddHours(17); 
+    private DateTime NewEndTime { get; set; } = DateTime.Today.AddHours(17);
+    
+    private bool IsLoading { get; set; } = false; 
+    private string? ProfessionalId { get; set; }
 
     private readonly CultureInfo LocalCulture = new("es-AR");
 
-    // Helper for display
     private Dictionary<int, string> DayNames = new() 
     {
         {1, "Lunes"}, {2, "Martes"}, {3, "Miércoles"}, {4, "Jueves"}, {5, "Viernes"}, {6, "Sábado"}, {0, "Domingo"}
     };
 
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        ProfessionalId = authState.User.FindFirst("nameid")?.Value 
+                      ?? authState.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value 
+                      ?? string.Empty;
+    }
+
     private async Task AddAvailability()
     {
         if (!SelectedDates.Any())
         {
-                await JS.ToastrWarning("Seleccioná al menos una fecha.");
-                return;
+            await JS.ToastrWarning("Seleccioná al menos una fecha.");
+            return;
         }
 
         if (NewEndTime <= NewStartTime)
@@ -110,35 +113,89 @@
             return;
         }
 
-        foreach (var date in SelectedDates)
+        IsLoading = true;
+        int successCount = 0;
+        string? lastError = null;
+        try
         {
-            var model = new ProfessionalAvailability 
-            { 
-                DayOfWeek = date.DayOfWeek, 
-                SpecificDate = date,
-                StartTime = NewStartTime.TimeOfDay, 
-                EndTime = NewEndTime.TimeOfDay 
-            };
-            
-            await DashboardService.AddAvailabilityAsync(model);
-        }
+            foreach (var date in SelectedDates)
+            {
+                var request = new AddAvailabilityRequest
+                { 
+                    ProfessionalId = ProfessionalId ?? string.Empty,
+                    Date = date, 
+                    StartTime = NewStartTime.ToString("HH:mm"), 
+                    EndTime = NewEndTime.ToString("HH:mm") 
+                };
 
-        await OnAvailabilityChanged.InvokeAsync(); 
-        await JS.ToastrSuccess("Disponibilidad actualizada.");
-        SelectedDates.Clear();
+                Console.WriteLine($"[Availability] Sending: ProfessionalId={request.ProfessionalId}, Date={request.Date}, Start={request.StartTime}, End={request.EndTime}");
+                
+                try
+                {
+                    var result = await DashboardService.AddAvailabilityAsync(request);
+                    if (result != null && result.success)
+                    {
+                        successCount++;
+                    }
+                    else
+                    {
+                        lastError = result?.Message ?? "Respuesta vacía del servidor";
+                        Console.WriteLine($"[Availability] Error for date {request.Date}: {lastError}");
+                    }
+                }
+                catch (Exception innerEx)
+                {
+                    lastError = innerEx.Message;
+                    Console.WriteLine($"[Availability] Exception for date {request.Date}: {innerEx}");
+                }
+            }
+
+            if (successCount > 0)
+            {
+                await OnAvailabilityChanged.InvokeAsync(); 
+                await JS.ToastrSuccess($"Se agregaron {successCount} horario(s) correctamente.");
+                SelectedDates.Clear();
+            }
+            else
+            {
+                await JS.ToastrError(lastError ?? "No se pudo agregar ningún horario.");
+            }
+        }
+        catch (Exception ex)
+        {
+             Console.WriteLine($"[Availability] Fatal error: {ex}");
+             await JS.ToastrError($"Error al guardar: {ex.Message}");
+        }
+        finally
+        {
+            IsLoading = false;
+        }
     }
 
     private async Task RemoveAvailability(Guid id)
     {
-        var response = await DashboardService.RemoveAvailabilityAsync(id);
-        if (response.success)
+        IsLoading = true;
+        try
         {
-            await OnAvailabilityChanged.InvokeAsync();
-            await JS.ToastrSuccess(response.Message);
+            var response = await DashboardService.RemoveAvailabilityAsync(id);
+            if (response.success)
+            {
+                await OnAvailabilityChanged.InvokeAsync();
+                await JS.ToastrSuccess(response.Message);
+            }
+            else
+            {
+                    await JS.ToastrError(response.Message);
+            }
         }
-        else
+        catch (Exception ex)
         {
-                await JS.ToastrError(response.Message);
+             Console.WriteLine(ex);
+             await JS.ToastrError("Error al eliminar disponibilidad.");
+        }
+        finally
+        {
+            IsLoading = false;
         }
     }
 }

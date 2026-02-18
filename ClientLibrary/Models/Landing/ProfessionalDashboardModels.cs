@@ -17,3 +17,12 @@ public class ServiceFormModel
     public string Description { get; set; } = string.Empty;
 }
 
+public class CertificationModel
+{
+    public Guid Id { get; set; }
+    public string Name { get; set; } = string.Empty;
+    public string Status { get; set; } = "Pendiente";
+    public DateTime? VerifiedDate { get; set; }
+    public string Type { get; set; } = "Document"; // PDF, Image
+}
+

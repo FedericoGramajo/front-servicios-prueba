@@ -44,5 +44,8 @@ builder.Services.AddScoped<CartStore>();
 builder.Services.AddScoped<AvailabilityMockService>();
 builder.Services.AddScoped<NotificationService>();
 builder.Services.AddScoped<IProfessionalDashboardService, ProfessionalDashboardService>();
+builder.Services.AddScoped<IUserProfileService, UserProfileService>();
+builder.Services.AddScoped<IServiceHistoryService, ServiceHistoryService>();
+builder.Services.AddScoped<IAdminDashboardService, AdminDashboardService>();
 
 await builder.Build().RunAsync();

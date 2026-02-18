@@ -29,5 +29,9 @@ namespace ClientLibrary.Helper
         {
             await jsRuntime.InvokeVoidAsync("showSwal", "error", message);
         }
+        public static async Task<bool> Confirm(this IJSRuntime jsRuntime, string message)
+        {
+            return await jsRuntime.InvokeAsync<bool>("confirm", message);
+        }
     }
 }

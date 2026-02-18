@@ -1,0 +1,31 @@
+@using System.Globalization
+
+<div class="row g-3 mb-4">
+    <div class="col-md-4">
+        <div class="dashboard-card">
+            <p class="text-muted mb-1">Próximos</p>
+            <h4 class="mb-0">@UpcomingCount</h4>
+            <small class="text-secondary">Agendados para esta semana</small>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="dashboard-card">
+            <p class="text-muted mb-1">En curso</p>
+            <h4 class="mb-0">@InProgressCount</h4>
+            <small class="text-secondary">Profesionales trabajando ahora</small>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="dashboard-card">
+            <p class="text-muted mb-1">Finalizados</p>
+            <h4 class="mb-0">@CompletedCount</h4>
+            <small class="text-secondary">Servicios cerrados con feedback</small>
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter] public int UpcomingCount { get; set; }
+    [Parameter] public int InProgressCount { get; set; }
+    [Parameter] public int CompletedCount { get; set; }
+}

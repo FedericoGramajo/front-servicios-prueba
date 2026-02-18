@@ -1,6 +1,10 @@
 @using System.Globalization
 @using ClientLibrary.Models.Category
 @using ClientLibrary.Models.ServicioAhora.ServOffering
+@using ClientLibrary.Services.Contracts
+@using ClientLibrary.Helper
+@inject IServOfferingService servOfferingService
+@inject IJSRuntime js
 
 <section class="surface-card mb-4">
     <div class="d-flex flex-column flex-lg-row justify-content-between gap-3 align-items-lg-center mb-3">
@@ -28,6 +32,7 @@
             <thead class="text-muted small">
                 <tr>
                     <th>Servicio</th>
+                    <th>Profesional</th>
                     <th>Rubro</th>
                     <th>Precio</th>
                     <th class="text-end">Acciones</th>
@@ -40,12 +45,13 @@
                     {
                         <tr>
                             <td>@service.Name</td>
+                            <td>@service.ProfessionalFullName</td>
                             <td>@service.CategoryName</td>
                             <td>@service.BasePrice.ToString("C0", LocalCulture)</td>
                             <td class="text-end">
                                 <div class="d-flex justify-content-end gap-2">
-                                    <button class="btn btn-outline-primary btn-sm">Editar</button>
-                                    <button class="btn btn-outline-danger btn-sm">Eliminar</button>
+                                    <button class="btn btn-outline-primary btn-sm" @onclick="() => OpenEditModal(service)">Editar</button>
+                                    <button class="btn btn-outline-danger btn-sm" @onclick="() => DeleteService(service)">Eliminar</button>
                                 </div>
                             </td>
                         </tr>
@@ -60,17 +66,131 @@
             </tbody>
         </table>
     </div>
+
 </section>
+
+<AdminServiceModal ShowModal="ShowModal"
+                   IsEditing="true"
+                   Model="EditingModel"
+                   Categories="Categories.ToList()"
+                   IsLoading="IsLoading"
+                   OnClose="CloseModal"
+                   OnSave="SaveService" />
+
+<ConfirmationModal @ref="deleteConfirmModal"
+                   Title="Eliminar servicio"
+                   Message="@DeleteConfirmMessage"
+                   ButtonText="Eliminar"
+                   ButtonClass="btn-danger"
+                   IsProcessing="IsDeleting"
+                   OnConfirm="ExecuteDelete" />
 
 @code {
     [Parameter] public IEnumerable<GetCategory> Categories { get; set; } = Enumerable.Empty<GetCategory>();
     [Parameter] public IEnumerable<GetServiceOffering> Services { get; set; } = Enumerable.Empty<GetServiceOffering>();
     [Parameter] public CultureInfo LocalCulture { get; set; } = CultureInfo.InvariantCulture;
+    [Parameter] public EventCallback OnServiceChanged { get; set; }
 
     private string SelectedCategory { get; set; } = "";
     private string SelectedStatus { get; set; } = "";
+    
+    // Edit Modal State
+    private bool ShowModal { get; set; }
+    private UpdateServiceOffering EditingModel { get; set; } = new();
+    private bool IsLoading { get; set; }
+
+    // Delete Confirmation Modal State
+    private ConfirmationModal deleteConfirmModal = default!;
+    private Guid? PendingDeleteServiceId { get; set; }
+    private string DeleteConfirmMessage { get; set; } = "";
+    private bool IsDeleting { get; set; }
 
     private IEnumerable<GetServiceOffering> FilteredServices => Services
         .Where(s => string.IsNullOrEmpty(SelectedCategory) || s.CategoryName == SelectedCategory)
         .Where(s => string.IsNullOrEmpty(SelectedStatus) || s.Status.ToString().ToLower() == SelectedStatus.ToLower());
+
+    private void OpenEditModal(GetServiceOffering service)
+    {
+        EditingModel = new UpdateServiceOffering
+        {
+            Id = service.Id,
+            Name = service.Name,
+            CategoryId = service.CategoryId,
+            BasePrice = service.BasePrice,
+            Description = service.Description
+        };
+        ShowModal = true;
+    }
+
+    private void CloseModal()
+    {
+        ShowModal = false;
+    }
+
+    private async Task SaveService()
+    {
+        IsLoading = true;
+        try
+        {
+            var result = await servOfferingService.UpdateAsync(EditingModel);
+            if (result.success)
+            {
+                await js.ToastrSuccess("Servicio actualizado correctamente.");
+                ShowModal = false;
+                await OnServiceChanged.InvokeAsync();
+            }
+            else
+            {
+                await js.ToastrError(result.Message);
+            }
+        }
+        catch (Exception ex)
+        {
+            await js.ToastrError("Error al actualizar el servicio.");
+            Console.WriteLine(ex);
+        }
+        finally
+        {
+            IsLoading = false;
+        }
+    }
+
+    private async Task DeleteService(GetServiceOffering service)
+    {
+        PendingDeleteServiceId = service.Id;
+        DeleteConfirmMessage = $"¿Estás seguro de eliminar el servicio '{service.Name}'?";
+        StateHasChanged();
+        await deleteConfirmModal.Show();
+    }
+
+    private async Task ExecuteDelete()
+    {
+        if (PendingDeleteServiceId is null) return;
+
+        IsDeleting = true;
+        try
+        {
+            var result = await servOfferingService.DeleteAsync(PendingDeleteServiceId.Value);
+            if (result.success)
+            {
+                await js.ToastrSuccess("Servicio eliminado.");
+                await OnServiceChanged.InvokeAsync();
+            }
+            else
+            {
+                await js.ToastrError(result.Message);
+            }
+        }
+        catch (Exception ex)
+        {
+            await js.ToastrError("Error al eliminar el servicio.");
+            Console.WriteLine(ex);
+        }
+        finally
+        {
+            IsDeleting = false;
+            await deleteConfirmModal.Hide();
+            PendingDeleteServiceId = null;
+        }
+    }
 }

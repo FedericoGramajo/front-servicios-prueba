@@ -1,37 +1,103 @@
+@using ClientLibrary.Models.Landing
+@using ClientLibrary.Services.Contracts
+@using System.Globalization
+@inject IProfessionalDashboardService DashboardService
+@inject IJSRuntime JS
+
 <div class="surface-card">
     <div class="d-flex justify-content-between align-items-center mb-3">
         <div>
             <h5 class="mb-1">Tus certificaciones</h5>
             <p class="text-muted small mb-0">Subí tus licencias y cursos para aumentar la confianza de los clientes.</p>
         </div>
-        <button class="btn btn-outline-primary btn-sm">
+        <button class="btn btn-outline-primary btn-sm" @onclick="AddCertificationStub">
             <i class="fa-solid fa-cloud-arrow-up me-2"></i> Subir certificado
         </button>
     </div>
     <div class="list-group list-group-flush">
-        <div class="list-group-item px-0 d-flex justify-content-between align-items-center">
-            <div class="d-flex align-items-center gap-3">
-                <i class="fa-solid fa-file-pdf text-danger fa-2x"></i>
-                <div>
-                    <h6 class="mb-0">Matrícula Nacional de Electricista</h6>
-                    <small class="text-success"><i class="fa-solid fa-check-circle me-1"></i> Verificado el 12/03/2024</small>
+        @if (Certifications == null)
+        {
+             <div class="text-center py-3">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Cargando...</span>
                 </div>
             </div>
-            <button class="btn btn-link text-muted"><i class="fa-solid fa-ellipsis-vertical"></i></button>
-        </div>
-        <div class="list-group-item px-0 d-flex justify-content-between align-items-center">
-            <div class="d-flex align-items-center gap-3">
-                <i class="fa-solid fa-file-image text-primary fa-2x"></i>
-                <div>
-                    <h6 class="mb-0">Curso de Seguridad e Higiene</h6>
-                    <small class="text-warning"><i class="fa-solid fa-clock me-1"></i> Pendiente de revisión</small>
-                </div>
+        }
+        else if (!Certifications.Any())
+        {
+            <div class="text-center py-3 text-muted">
+                No tenés certificaciones cargadas aún.
             </div>
-            <button class="btn btn-link text-muted"><i class="fa-solid fa-ellipsis-vertical"></i></button>
-        </div>
+        }
+        else
+        {
+            @foreach (var cert in Certifications)
+            {
+                <div class="list-group-item px-0 d-flex justify-content-between align-items-center">
+                    <div class="d-flex align-items-center gap-3">
+                        @if (cert.Type == "PDF")
+                        {
+                            <i class="fa-solid fa-file-pdf text-danger fa-2x"></i>
+                        }
+                        else
+                        {
+                             <i class="fa-solid fa-file-image text-primary fa-2x"></i>
+                        }
+                        <div>
+                            <h6 class="mb-0">@cert.Name</h6>
+                            @if (cert.Status == "Verificado")
+                            {
+                                <small class="text-success"><i class="fa-solid fa-check-circle me-1"></i> Verificado @(cert.VerifiedDate.HasValue ? "el " + cert.VerifiedDate.Value.ToString("dd/MM/yyyy") : "")</small>
+                            }
+                            else if (cert.Status == "Rechazado")
+                            {
+                                <small class="text-danger"><i class="fa-solid fa-circle-xmark me-1"></i> Rechazado</small>
+                            }
+                            else
+                            {
+                                <small class="text-warning"><i class="fa-solid fa-clock me-1"></i> Pendiente de revisión</small>
+                            }
+                        </div>
+                    </div>
+                    <button class="btn btn-link text-muted" @onclick="() => RemoveCertification(cert.Id)"><i class="fa-solid fa-trash"></i></button>
+                </div>
+            }
+        }
     </div>
 </div>
 
 @code {
-    // Static for now, as per original file
+    private List<CertificationModel>? Certifications { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadCertifications();
+    }
+
+    private async Task LoadCertifications()
+    {
+        Certifications = await DashboardService.GetCertificationsAsync();
+    }
+
+    private async Task RemoveCertification(Guid id)
+    {
+        if (await JS.InvokeAsync<bool>("confirm", "¿Estás seguro de que querés eliminar esta certificación?"))
+        {
+            var response = await DashboardService.RemoveCertificationAsync(id);
+            if (response.success)
+            {
+                await JS.ToastrSuccess("Certificación eliminada");
+                await LoadCertifications();
+            }
+            else
+            {
+                await JS.ToastrError(response.Message);
+            }
+        }
+    }
+
+    private async Task AddCertificationStub()
+    {
+        await JS.ToastrInfo("Funcionalidad de carga en desarrollo (Backend integration needed for multipart upload)");
+    }
 }

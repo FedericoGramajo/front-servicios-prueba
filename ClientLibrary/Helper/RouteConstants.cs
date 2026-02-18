@@ -23,8 +23,9 @@ namespace ClientLibrary.Helper
         public const string UserServices = "/mis-servicios";
 
         // Dashboards
-        public const string ProfessionalDashboard = "/panel-profesional";
-        public const string AdminDashboard = "/panel-administrador";
+        public const string ProfessionalDashboard = "/professional/dashboard";
+        public const string ClientDashboard = "/client/dashboard";
+        public const string AdminDashboard = "/admin/dashboard";
         public const string OldAdminDashboard = "/oldpanel-administrador";
 
         // Authentication

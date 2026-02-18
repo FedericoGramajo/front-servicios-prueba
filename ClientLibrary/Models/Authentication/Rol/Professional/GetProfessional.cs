@@ -13,11 +13,14 @@
         public string AppUserId { get; set; } = default!; // = Professional.Id
         public string FullName { get; set; } = string.Empty;
         public string Email { get; set; } = string.Empty;
+        public bool IsActive { get; set; } // Added
+        public string? ProfileImage { get; set; } // Added
 
         // Resúmenes para no cargar todo el grafo
         public List<string> Licenses { get; set; } = new();      // Números / códigos
         public List<string> Categories { get; set; } = new();    // Nombres de categorías
         public int ServicesCount { get; set; }
-        public double AvgRating { get; set; }                    // promedio simple como ejemplo
+        public int BookingsCount { get; set; } // Added: servicios contratados/reserva
+        public double AvgRating { get; set; }   // promedio simple como ejemplo
     }
 }

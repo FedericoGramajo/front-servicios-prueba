@@ -32,7 +32,7 @@ namespace ClientLibrary.Helper
         public static class Authentication
         {
             public const string Type                    = "Bearer";
-            public const string Register                = "authentication/register";
+            public const string Register                = "authentication/create";
             public const string Login                   = "authentication/login";
             public const string ReviveToken             = "authentication/refreshToken";
             public const string RequestPasswordReset    = "authentication/request-password-reset";
@@ -71,6 +71,50 @@ namespace ClientLibrary.Helper
         public static class Administration
         {
             public const string AdminRole = "Admin";
+            public const string ProfessionalRole = "Professional";
+            public const string CustomerRole = "Customer";
+        }
+        public static class UserProfile
+        {
+            public const string Get = "userprofile/get";
+            public const string Update = "userprofile/update";
+            public const string AddAddress = "userprofile/address/add";
+            public const string DeleteAddress = "userprofile/address/delete";
+            public const string GetAddresses = "userprofile/address/get";
+        }
+        public static class ServiceHistory
+        {
+            public const string GetHistory = "servicehistory/get";
+        }
+        public static class Professional
+        {
+            public const string GetMetrics              = "professional/metrics";
+            public const string GetServiceGroups        = "professional/service-groups";
+            public const string GetTransactions         = "professional/transactions";
+            public const string AddService              = "professional/service/add";
+            public const string UpdateService           = "professional/service/update";
+            public const string DeleteService           = "professional/service/delete";
+            
+            public const string GetAvailableCategories  = "professional/categories/available";
+            public const string GetMyCategories         = "professional/categories/mine";
+            public const string AddMyCategory           = "professional/categories/add";
+            public const string RemoveMyCategory        = "professional/categories/remove";
+
+            public const string GetAvailability         = "availability/professional";
+            public const string AddAvailability         = "availability/add";
+            public const string RemoveAvailability      = "availability/delete";
+
+            public const string GetCertifications       = "professional/certifications/get";
+            public const string AddCertification        = "professional/certifications/add"; // Multipart usually
+            public const string RemoveCertification     = "professional/certifications/remove";
+        }
+        public static class Admin
+        {
+            public const string GetMetrics              = "admin/metrics";
+            public const string GetCategoryReport       = "admin/reports/categories";
+            public const string GetStatusReport         = "admin/reports/status";
+            public const string GetProfessionals        = "Professional/all";
+            public const string UpdateProfessional      = "Professional/update";
         }
     }
 }

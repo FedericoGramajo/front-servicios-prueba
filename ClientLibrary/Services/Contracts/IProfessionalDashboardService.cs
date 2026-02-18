@@ -24,9 +24,13 @@ public interface IProfessionalDashboardService
     Task<ServiceResponse> RemoveMyCategoryAsync(string category);
 
     // Availability Management
-    Task<List<ProfessionalAvailability>> GetAvailabilityAsync();
-    Task<ServiceResponse> AddAvailabilityAsync(ProfessionalAvailability availability);
-    Task<ServiceResponse> RemoveAvailabilityAsync(int dayOfWeek);
+    Task<List<ProfessionalAvailability>> GetAvailabilityAsync(string professionalId);
+    Task<ServiceResponse> AddAvailabilityAsync(AddAvailabilityRequest request);
     Task<ServiceResponse> RemoveAvailabilityAsync(Guid id);
+
+    // Certification Management
+    Task<List<CertificationModel>> GetCertificationsAsync();
+    Task<ServiceResponse> AddCertificationAsync(CertificationModel certification);
+    Task<ServiceResponse> RemoveCertificationAsync(Guid id);
 }
 

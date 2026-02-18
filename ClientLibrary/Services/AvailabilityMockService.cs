@@ -7,14 +7,26 @@ public class AvailabilityMockService
     // Simulating availability: Mon-Fri, 9:00 - 17:00
     public Task<List<ProfessionalAvailability>> GetAvailabilityAsync(string professionalId)
     {
-        var availability = new List<ProfessionalAvailability>
+        var availability = new List<ProfessionalAvailability>();
+        var today = DateTime.Today;
+        
+        // Generate availability for next 14 days
+        for (int i = 0; i < 14; i++)
         {
-            new() { ProfessionalId = professionalId, DayOfWeek = DayOfWeek.Monday, StartTime = new TimeSpan(9, 0, 0), EndTime = new TimeSpan(17, 0, 0) },
-            new() { ProfessionalId = professionalId, DayOfWeek = DayOfWeek.Tuesday, StartTime = new TimeSpan(9, 0, 0), EndTime = new TimeSpan(17, 0, 0) },
-            new() { ProfessionalId = professionalId, DayOfWeek = DayOfWeek.Wednesday, StartTime = new TimeSpan(9, 0, 0), EndTime = new TimeSpan(17, 0, 0) },
-            new() { ProfessionalId = professionalId, DayOfWeek = DayOfWeek.Thursday, StartTime = new TimeSpan(9, 0, 0), EndTime = new TimeSpan(17, 0, 0) },
-            new() { ProfessionalId = professionalId, DayOfWeek = DayOfWeek.Friday, StartTime = new TimeSpan(9, 0, 0), EndTime = new TimeSpan(16, 0, 0) } // Friday ends earlier
-        };
+            var date = today.AddDays(i);
+            if (date.DayOfWeek >= DayOfWeek.Monday && date.DayOfWeek <= DayOfWeek.Friday)
+            {
+                var endTime = date.DayOfWeek == DayOfWeek.Friday ? new TimeSpan(16, 0, 0) : new TimeSpan(17, 0, 0);
+                availability.Add(new ProfessionalAvailability 
+                { 
+                    ProfessionalId = professionalId, 
+                    Date = date,
+                    DayOfWeek = date.DayOfWeek, 
+                    StartTime = new TimeSpan(9, 0, 0), 
+                    EndTime = endTime 
+                });
+            }
+        }
 
         return Task.FromResult(availability);
     }

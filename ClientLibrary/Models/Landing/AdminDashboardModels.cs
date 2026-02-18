@@ -1,4 +1,6 @@
-namespace BlazorWasm.Pages.AdminDashboard;
+using System;
+
+namespace ClientLibrary.Models.Landing;
 
 public record AdminMetric(string Label, string Value, string Subtitle);
 

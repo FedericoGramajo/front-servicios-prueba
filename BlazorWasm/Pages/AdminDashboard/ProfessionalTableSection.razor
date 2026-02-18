@@ -1,4 +1,8 @@
 @using ClientLibrary.Models.Authentication.Rol.Professional
+@using ClientLibrary.Services.Contracts
+@using ClientLibrary.Helper
+@inject IAdminDashboardService adminService
+@inject IJSRuntime js
 
 <section class="surface-card mb-4">
     <div class="d-flex flex-column flex-lg-row justify-content-between gap-3 align-items-lg-center mb-3">
@@ -7,14 +11,13 @@
             <p class="text-muted mb-0">Gestión y reportes por especialidad</p>
         </div>
         <div class="d-flex gap-2 flex-wrap">
-            <input class="form-control" placeholder="Buscar profesional" />
-            <select class="form-select">
-                <option>Ciudad</option>
-                <option>Buenos Aires</option>
-                <option>Córdoba</option>
-                <option>Rosario</option>
+            <input class="form-control" placeholder="Buscar profesional" @bind="SearchTerm" @bind:event="oninput" />
+            <select class="form-select" @bind="FilterStatus">
+                <option value="All">Todos</option>
+                <option value="Active">Activos</option>
+                <option value="Inactive">Inactivos</option>
             </select>
-            <button class="btn btn-primary">Buscar</button>
+            @* <button class="btn btn-primary" @onclick="ApplyFilters">Buscar</button> *@
         </div>
     </div>
     <div class="table-responsive">
@@ -22,24 +25,57 @@
             <thead class="text-muted small">
                 <tr>
                     <th>Nombre</th>
+                    @* <th>Especialidad</th> Duplicated *@
+                    <th>Email</th>
                     <th>Especialidad</th>
-                    <th>Servicios</th>
+                    <th class="text-center">Estado</th>
+                    <th class="text-center">Servicios Ofrecidos</th>
+                    <th class="text-center">Contrataciones</th>
                     <th class="text-end">Acciones</th>
                 </tr>
             </thead>
             <tbody>
-                @foreach (var professional in Professionals)
+                @if (FilteredProfessionals.Any())
                 {
-                    <tr>
-                        <td>@professional.FullName</td>
-                        <td>@string.Join(", ", professional.Categories)</td>
-                        <td>@professional.ServicesCount</td>
-                        <td class="text-end">
-                            <div class="d-flex justify-content-end gap-2">
-                                <button class="btn btn-outline-primary btn-sm">Ver perfil</button>
-                                <button class="btn btn-outline-danger btn-sm">Suspender</button>
-                            </div>
-                        </td>
+                    @foreach (var professional in FilteredProfessionals)
+                    {
+                        <tr>
+                            <td>@professional.FullName</td>
+                            @* <td>@string.Join(", ", professional.Categories)</td> Duplicated *@
+                            <td>@professional.Email</td>
+                            <td>@string.Join(", ", professional.Categories)</td>
+                            <td class="text-center">
+                                @if (professional.IsActive)
+                                {
+                                    <span class="badge rounded-pill bg-success">Activo</span>
+                                }
+                                else
+                                {
+                                    <span class="badge rounded-pill bg-danger">Inactivo</span>
+                                }
+                            </td>
+                            <td class="text-center">@professional.ServicesCount</td>
+                            <td class="text-center">@professional.BookingsCount</td>
+                            <td class="text-end">
+                                <div class="d-flex justify-content-end gap-2">
+                                    <button class="btn btn-outline-primary btn-sm">Ver perfil</button>
+                                    @if(professional.IsActive)
+                                    {
+                                         <button class="btn btn-outline-danger btn-sm" style="min-width: 95px;" @onclick="() => ToggleStatus(professional)">Suspender</button>
+                                    }
+                                    else
+                                    {
+                                         <button class="btn btn-outline-success btn-sm" style="min-width: 95px;" @onclick="() => ToggleStatus(professional)">Activar</button>
+                                    }
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                }
+                else
+                {
+                     <tr>
+                        <td colspan="7" class="text-center text-muted">No se encontraron profesionales.</td>
                     </tr>
                 }
             </tbody>
@@ -47,6 +83,87 @@
     </div>
 </section>
 
+<ConfirmationModal @ref="confirmModal"
+                   Title="@ConfirmTitle"
+                   Message="@ConfirmMessage"
+                   ButtonText="@ConfirmButtonText"
+                   ButtonClass="@ConfirmButtonClass"
+                   IsProcessing="IsProcessing"
+                   OnConfirm="ExecuteToggle" />
+
 @code {
     [Parameter] public IEnumerable<GetProfessional> Professionals { get; set; } = Enumerable.Empty<GetProfessional>();
+    
+    // Search & Filter
+    private string SearchTerm { get; set; } = "";
+    private string FilterStatus { get; set; } = "All";
+
+    private IEnumerable<GetProfessional> FilteredProfessionals => Professionals
+        .Where(p => string.IsNullOrWhiteSpace(SearchTerm) || 
+                    p.FullName.Contains(SearchTerm, StringComparison.OrdinalIgnoreCase) || 
+                    p.Email.Contains(SearchTerm, StringComparison.OrdinalIgnoreCase))
+        .Where(p => FilterStatus == "All" || 
+                   (FilterStatus == "Active" && p.IsActive) || 
+                   (FilterStatus == "Inactive" && !p.IsActive));
+
+    // Confirmation Modal State
+    private ConfirmationModal confirmModal = default!;
+    private GetProfessional? PendingProfessional { get; set; }
+    private string ConfirmTitle { get; set; } = "";
+    private string ConfirmMessage { get; set; } = "";
+    private string ConfirmButtonText { get; set; } = "";
+    private string ConfirmButtonClass { get; set; } = "";
+    private bool IsProcessing { get; set; }
+
+    private async Task ToggleStatus(GetProfessional professional)
+    {
+        PendingProfessional = professional;
+        bool isSuspending = professional.IsActive;
+
+        ConfirmTitle = isSuspending ? "Suspender profesional" : "Activar profesional";
+        ConfirmMessage = isSuspending 
+            ? $"¿Estás seguro de suspender al profesional '{professional.FullName}'?" 
+            : $"¿Estás seguro de activar al profesional '{professional.FullName}'?";
+        ConfirmButtonText = isSuspending ? "Suspender" : "Activar";
+        ConfirmButtonClass = isSuspending ? "btn-danger" : "btn-success";
+
+        StateHasChanged();
+        await confirmModal.Show();
+    }
+
+    private async Task ExecuteToggle()
+    {
+        if (PendingProfessional is null) return;
+
+        IsProcessing = true;
+        string action = PendingProfessional.IsActive ? "suspender" : "activar";
+
+        try
+        {
+            PendingProfessional.IsActive = !PendingProfessional.IsActive;
+            var result = await adminService.UpdateProfessionalAsync(PendingProfessional);
+
+            if (result.success)
+            {
+                await js.ToastrSuccess($"Profesional {action}do correctamente.");
+            }
+            else
+            {
+                PendingProfessional.IsActive = !PendingProfessional.IsActive;
+                await js.ToastrError($"Error: {result.Message}");
+            }
+        }
+        catch (Exception ex)
+        {
+            PendingProfessional.IsActive = !PendingProfessional.IsActive;
+            await js.ToastrError("Error de conexión al actualizar estado.");
+            Console.WriteLine(ex);
+        }
+        finally
+        {
+            IsProcessing = false;
+            await confirmModal.Hide();
+            PendingProfessional = null;
+        }
+    }
 }

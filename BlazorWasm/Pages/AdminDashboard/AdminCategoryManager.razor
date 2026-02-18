@@ -1,0 +1,161 @@
+@using ClientLibrary.Helper
+@using ClientLibrary.State
+@inject ICategoryService categoryService
+@inject CategoryStore categoryStore
+@inject IJSRuntime js
+
+<CategoryTableSection Categories="Categories"
+                      OnAddCategory="OpenAddCategory"
+                      OnEditCategory="OpenEditCategory"
+                      OnDeleteCategory="DeleteCategory" />
+
+<CategoryModals ShowAddCategoryModal="ShowAddCategoryModal"
+                ShowEditCategoryModal="ShowEditCategoryModal"
+                @bind-NewCategoryName="NewCategoryName"
+                @bind-NewCategoryIcon="NewCategoryIcon"
+                @bind-NewCategoryIsFeatured="NewCategoryIsFeatured"
+                @bind-EditingCategoryName="EditingCategoryName"
+                @bind-EditingCategoryIcon="EditingCategoryIcon"
+                @bind-EditingCategoryIsFeatured="EditingCategoryIsFeatured"
+                OnClose="CloseModals"
+                OnSaveNew="SaveNewCategory"
+                OnSaveEdit="SaveEditedCategory"
+                IsLoading="IsLoading" />
+
+@code {
+    [Parameter] public List<GetCategory> Categories { get; set; } = new();
+    [Parameter] public EventCallback OnCategoryChanged { get; set; }
+
+    private bool ShowAddCategoryModal { get; set; }
+    private bool ShowEditCategoryModal { get; set; }
+    private string NewCategoryName { get; set; } = string.Empty;
+    private string NewCategoryIcon { get; set; } = string.Empty;
+    private bool NewCategoryIsFeatured { get; set; }
+
+    private string EditingCategoryName { get; set; } = string.Empty;
+    private string EditingCategoryIcon { get; set; } = string.Empty;
+    private bool EditingCategoryIsFeatured { get; set; }
+    private GetCategory? CategoryToEdit { get; set; }
+    
+    // State for button blocking
+    private bool IsLoading { get; set; } = false;
+
+    private void OpenAddCategory()
+    {
+        ShowAddCategoryModal = true;
+        NewCategoryName = string.Empty;
+        NewCategoryIcon = string.Empty;
+        NewCategoryIsFeatured = false;
+        ShowEditCategoryModal = false;
+    }
+
+    private void OpenEditCategory(GetCategory category)
+    {
+        CategoryToEdit = category;
+        EditingCategoryName = category.Name;
+        EditingCategoryIcon = category.Icon ?? string.Empty;
+        EditingCategoryIsFeatured = category.IsFeatured;
+        ShowEditCategoryModal = true;
+        ShowAddCategoryModal = false;
+    }
+
+    private void CloseModals()
+    {
+        ShowAddCategoryModal = false;
+        ShowEditCategoryModal = false;
+        CategoryToEdit = null;
+    }
+
+    private async Task SaveNewCategory()
+    {
+        if (string.IsNullOrWhiteSpace(NewCategoryName)) return;
+
+        IsLoading = true;
+        try
+        {
+            var result = await categoryService.AddAsync(new CreateCategory 
+            { 
+                Name = NewCategoryName.Trim(),
+                Icon = NewCategoryIcon.Trim(),
+                IsFeatured = NewCategoryIsFeatured
+            });
+
+            if (result.success)
+            {
+                await js.ToastrSuccess(result.Message);
+                CloseModals();
+                await categoryStore.LoadCategoriesAsync(true); // Force reload global store
+                await OnCategoryChanged.InvokeAsync();
+            }
+            else
+            {
+                await js.ToastrError(result.Message);
+            }
+        }
+        catch (Exception ex)
+        {
+            await js.ToastrError("Error inesperado al crear el rubro.");
+            Console.WriteLine(ex);
+        }
+        finally
+        {
+            IsLoading = false;
+        }
+    }
+
+    private async Task SaveEditedCategory()
+    {
+        if (CategoryToEdit is null || string.IsNullOrWhiteSpace(EditingCategoryName)) return;
+
+        IsLoading = true;
+        try
+        {
+            var categoryUpdate = new UpdateCategory
+            {
+                Id = CategoryToEdit.Id,
+                Name = EditingCategoryName.Trim(),
+                Icon = EditingCategoryIcon.Trim(),
+                IsFeatured = EditingCategoryIsFeatured
+            };
+
+            var result = await categoryService.UpdateAsync(categoryUpdate);
+
+            if (result.success)
+            {
+                await js.ToastrSuccess(result.Message);
+                CloseModals();
+                await categoryStore.LoadCategoriesAsync(true); // Force reload global store
+                await OnCategoryChanged.InvokeAsync();
+            }
+            else
+            {
+                await js.ToastrError(result.Message);
+            }
+        }
+        catch (Exception ex)
+        {
+            await js.ToastrError("Error inesperado al editar el rubro.");
+            Console.WriteLine(ex);
+        }
+        finally
+        {
+            IsLoading = false;
+        }
+    }
+
+    private async Task DeleteCategory(Guid categoryId)
+    {
+        var result = await categoryService.DeleteAsync(categoryId);
+
+        if (result.success)
+        {
+            await js.ToastrSuccess(result.Message);
+            await categoryStore.LoadCategoriesAsync(true); // Force reload global store
+            await OnCategoryChanged.InvokeAsync();
+        }
+        else
+        {
+            await js.ToastrError(result.Message);
+        }
+    }
+}

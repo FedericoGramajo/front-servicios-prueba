@@ -1,11 +1,10 @@
 @attribute [Route(RouteConstants.ProfessionalDashboard)]
+@attribute [Authorize(Roles = "Professional,Admin")]
 @inject IProfessionalDashboardService DashboardService
 
 <PageTitle>Panel profesional - ServicioAhora!</PageTitle>
 
 <div class="landing-page">
-
-
     <main class="container py-5 account-layout">
         <div class="section-heading flex-column flex-lg-row">
             <div>
@@ -13,68 +12,128 @@
                 <h2 class="mb-0">Gestioná tus servicios y reportes</h2>
             </div>
             <div class="d-flex gap-2">
-                <button class="btn btn-outline-primary" @onclick="() => ServiceManagerComponent.OpenAddServiceModal(null)">Agregar servicio</button>
-                <button class="btn btn-primary">Exportar reporte</button>
+                @if (ActiveTab == "services")
+                {
+                    <button class="btn btn-outline-primary" @onclick="() => ServiceManagerComponent.OpenAddServiceModal(null)">Agregar servicio</button>
+                    @* <button class="btn btn-primary">Exportar reporte</button> *@
+                }
             </div>
         </div>
 
-        <DashboardMetrics Metrics="@Metrics" />
+        <!-- Navigation Tabs -->
+        <ul class="nav nav-tabs mb-4">
+            <li class="nav-item">
+                <button class="nav-link @(ActiveTab == "resume" ? "active fw-bold" : "")" @onclick='() => ActiveTab = "resume"'>
+                    <i class="fa-solid fa-chart-line me-2"></i>Resumen
+                </button>
+            </li>
+            <li class="nav-item">
+                <button class="nav-link @(ActiveTab == "services" ? "active fw-bold" : "")" @onclick='() => ActiveTab = "services"'>
+                    <i class="fa-solid fa-briefcase me-2"></i>Servicios
+                </button>
+            </li>
+            <li class="nav-item">
+                <button class="nav-link @(ActiveTab == "availability" ? "active fw-bold" : "")" @onclick='() => ActiveTab = "availability"'>
+                    <i class="fa-regular fa-calendar-check me-2"></i>Disponibilidad
+                </button>
+            </li>
+            <li class="nav-item">
+                <button class="nav-link @(ActiveTab == "certifications" ? "active fw-bold" : "")" @onclick='() => ActiveTab = "certifications"'>
+                    <i class="fa-solid fa-award me-2"></i>Certificaciones
+                </button>
+            </li>
+        </ul>
 
-        <CategoryManager MyCategories="@MyCategories" AvailableCategories="@AvailableCategories" OnCategoryChanged="@RefreshCategories" />
-
-        <div class="row g-3 mb-4">
-            <div class="col-12">
-                <CertificationsList />
+        <!-- Content -->
+        @if (ActiveTab == "resume")
+        {
+            <DashboardMetrics Metrics="@Metrics" />
+            <FinancialReports />
+        }
+        else if (ActiveTab == "services")
+        {
+            <CategoryManager MyCategories="@MyCategories" OnCategoryChanged="@RefreshCategories" />
+            <ServiceManager @ref="ServiceManagerComponent" ServiceGroups="@ServiceGroups" OnServiceChanged="@RefreshServices" />
+        }
+        else if (ActiveTab == "availability")
+        {
+            <div class="surface-card mt-4">
+                 <div class="d-flex justify-content-between align-items-center mb-3">
+                    <div>
+                        <h4 class="mb-1">Disponibilidad Horaria</h4>
+                        <p class="text-muted mb-0">Configurá tus días y horarios de atención</p>
+                    </div>
+                </div>
+                
+                <AvailabilitySchedule Availabilities="@Availabilities" OnAvailabilityChanged="@RefreshAvailability" />
             </div>
-        </div>
-
-        <ServiceManager @ref="ServiceManagerComponent" ServiceGroups="@ServiceGroups" OnServiceChanged="@RefreshServices" />
-
-        <div class="surface-card mt-4">
-             <div class="d-flex justify-content-between align-items-center mb-3">
-                <div>
-                    <h4 class="mb-1">Disponibilidad Horaria</h4>
-                    <p class="text-muted mb-0">Configurá tus días y horarios de atención</p>
+        }
+        else if (ActiveTab == "certifications")
+        {
+            <div class="row g-3 mb-4">
+                <div class="col-12">
+                    <CertificationsList />
                 </div>
             </div>
-            
-            <AvailabilitySchedule Availabilities="@Availabilities" OnAvailabilityChanged="@RefreshAvailability" />
-        </div>
+        }
 
-        <FinancialReports />
     </main>
-
-
-
-
 </div>
 
 @using Microsoft.JSInterop
 @using ClientLibrary.Helper
 @inject IJSRuntime JS
+@inject AuthenticationStateProvider AuthStateProvider
 
 @code {
     private readonly CultureInfo LocalCulture = new("es-AR");
+
+    // Tab State
+    private string ActiveTab { get; set; } = "resume";
+
+    [Parameter]
+    [SupplyParameterFromQuery]
+    public string? Tab { get; set; }
 
     // Data
     private ServiceManager ServiceManagerComponent;
     private ClientLibrary.Models.Landing.DashboardMetrics Metrics { get; set; } = new(0, 0, 0, 0);
     private List<ServiceGroup> ServiceGroups { get; set; } = new();
     private List<string> MyCategories { get; set; } = new();
-    private List<string> AvailableCategories { get; set; } = new();
+
     private List<ProfessionalAvailability> Availabilities { get; set; } = new();
+    private string ProfessionalId { get; set; } = string.Empty;
 
     protected override async Task OnInitializedAsync()
     {
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        ProfessionalId = authState.User.FindFirst("nameid")?.Value 
+                      ?? authState.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value 
+                      ?? string.Empty;
+
+        if (!string.IsNullOrEmpty(Tab))
+        {
+            ActiveTab = Tab.ToLower() switch
+            {
+                "services" => "services",
+                "availability" => "availability",
+                "certifications" => "certifications",
+                _ => "resume"
+            };
+        }
         await LoadDataAsync();
     }
 
     private async Task LoadDataAsync()
     {
-        await LoadMetricsAsync();
-        await LoadServicesAsync();
-        await LoadCategoriesAsync();
-        await LoadAvailabilityAsync();
+        // Load critical data first or all in parallel
+        // For tabs, we could lazy load, but for simplicity let's load core data
+        var t1 = LoadMetricsAsync();
+        var t2 = LoadServicesAsync();
+        var t3 = LoadCategoriesAsync(); 
+        var t4 = LoadAvailabilityAsync();
+
+        await Task.WhenAll(t1, t2, t3, t4);
     }
 
     private async Task LoadMetricsAsync()
@@ -90,32 +149,35 @@
     private async Task LoadCategoriesAsync()
     {
         MyCategories = await DashboardService.GetMyCategoriesAsync();
-        AvailableCategories = await DashboardService.GetAvailableCategoriesAsync();
     }
 
     private async Task LoadAvailabilityAsync()
     {
-        Availabilities = await DashboardService.GetAvailabilityAsync();
+        if (!string.IsNullOrEmpty(ProfessionalId))
+        {
+            Console.WriteLine($"[Dashboard] Loading availability for {ProfessionalId}...");
+            Availabilities = await DashboardService.GetAvailabilityAsync(ProfessionalId);
+            Console.WriteLine($"[Dashboard] Loaded {Availabilities.Count} availability items.");
+            StateHasChanged();
+        }
     }
 
     // Callbacks
     private async Task RefreshServices()
     {
         await LoadServicesAsync();
-        await LoadMetricsAsync(); // Updating services changes metrics
+        await LoadMetricsAsync(); 
     }
 
     private async Task RefreshCategories()
     {
         await LoadCategoriesAsync();
-        // If category removed, services might change? 
-        // Logic says removing category removes services? 
-        // User didn't specify cascade delete logic, but let's refresh services just in case.
         await LoadServicesAsync(); 
     }
 
     private async Task RefreshAvailability()
     {
+        Console.WriteLine("[Dashboard] Refreshing availability...");
         await LoadAvailabilityAsync();
     }
 }

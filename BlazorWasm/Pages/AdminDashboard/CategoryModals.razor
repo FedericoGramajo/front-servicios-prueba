@@ -52,8 +52,10 @@
                 </div>
 
                 <div class="modal-footer">
-                    <button class="btn btn-outline-secondary" @onclick="OnClose">Cancelar</button>
-                    <button class="btn btn-primary" @onclick="OnSaveNew">Guardar</button>
+                    <button class="btn btn-outline-secondary" @onclick="OnClose" disabled="@IsLoading">Cancelar</button>
+                    <button class="btn btn-primary" @onclick="OnSaveNew" disabled="@IsLoading">
+                        @(IsLoading ? "Guardando..." : "Guardar")
+                    </button>
                 </div>
             </div>
         </div>
@@ -114,8 +116,10 @@
                 </div>
 
                 <div class="modal-footer">
-                    <button class="btn btn-outline-secondary" @onclick="OnClose">Cancelar</button>
-                    <button class="btn btn-primary" @onclick="OnSaveEdit">Guardar cambios</button>
+                    <button class="btn btn-outline-secondary" @onclick="OnClose" disabled="@IsLoading">Cancelar</button>
+                    <button class="btn btn-primary" @onclick="OnSaveEdit" disabled="@IsLoading">
+                        @(IsLoading ? "Guardando..." : "Guardar cambios")
+                    </button>
                 </div>
             </div>
         </div>
@@ -128,6 +132,8 @@
     // Parámetros desde el padre
     [Parameter] public bool ShowAddCategoryModal { get; set; }
     [Parameter] public bool ShowEditCategoryModal { get; set; }
+
+    [Parameter] public bool IsLoading { get; set; }
 
     [Parameter] public string NewCategoryName { get; set; } = string.Empty;
     [Parameter] public EventCallback<string> NewCategoryNameChanged { get; set; }

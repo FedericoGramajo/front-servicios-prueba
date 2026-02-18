@@ -1,0 +1,232 @@
+@using ClientLibrary.Helper
+@inject IJSRuntime JS
+
+<div class="d-flex flex-column flex-lg-row gap-4 align-items-start">
+    <div class="surface-card flex-grow-1">
+        <div class="section-heading flex-column flex-lg-row">
+            <div>
+                <p class="text-uppercase text-muted small mb-1">Datos personales</p>
+                <h2 class="mb-0">Gestioná tu perfil</h2>
+            </div>
+            <div class="d-flex gap-2">
+                <button class="btn btn-outline-primary">Cancelar</button>
+                <button class="btn btn-primary" @onclick="SaveChanges">Guardar cambios</button>
+            </div>
+        </div>
+
+        <div class="row g-3">
+            <div class="col-md-6">
+                <label class="form-label fw-semibold">Nombre completo</label>
+                <input class="form-control" placeholder="Tu nombre" @bind="UserProfile.FullName" />
+            </div>
+            <div class="col-md-6">
+                <label class="form-label fw-semibold">Correo electrónico</label>
+                <input class="form-control" type="email" placeholder="correo@ejemplo.com" @bind="UserProfile.Email" />
+            </div>
+            <div class="col-md-6">
+                <label class="form-label fw-semibold">Teléfono</label>
+                <input class="form-control" type="tel" placeholder="11 4444 9999" @bind="UserProfile.Phone" />
+            </div>
+            <div class="col-md-6">
+                <label class="form-label fw-semibold">Ciudad</label>
+                <input class="form-control" placeholder="Ciudad" @bind="UserProfile.City" />
+            </div>
+            <div class="col-12">
+                <label class="form-label fw-semibold d-block mb-2">Direcciones guardadas</label>
+                @foreach (var address in Addresses)
+                {
+                    <div class="card mb-2 border-0 shadow-sm">
+                        <div class="card-body d-flex justify-content-between align-items-center py-2">
+                            <div>
+                                <i class="fa-solid fa-map-pin text-primary me-2"></i>
+                                <span>@address.Street, @address.City</span>
+                                @if (address.IsPrimary)
+                                {
+                                    <span class="badge bg-success-subtle text-success ms-2">Principal</span>
+                                }
+                            </div>
+                            <button class="btn btn-sm btn-outline-danger border-0" @onclick="() => DeleteAddress(address)">
+                                <i class="fa-solid fa-trash"></i>
+                            </button>
+                        </div>
+                    </div>
+                }
+                <button class="btn btn-outline-primary btn-sm mt-1" @onclick="ShowAddAddressModal">
+                    <i class="fa-solid fa-plus me-1"></i> Agregar dirección
+                </button>
+            </div>
+            <div class="col-md-6">
+                <label class="form-label fw-semibold">Preferencia de contacto</label>
+                <select class="form-select" @bind="UserProfile.ContactPreference">
+                    <option>WhatsApp</option>
+                    <option>Email</option>
+                    <option>Llamada</option>
+                </select>
+            </div>
+            <div class="col-md-6">
+                <label class="form-label fw-semibold">Disponibilidad</label>
+                <select class="form-select" @bind="UserProfile.Availability">
+                    <option>Mañana</option>
+                    <option>Tarde</option>
+                    <option>Noche</option>
+                    <option>Fines de semana</option>
+                </select>
+            </div>
+            <div class="col-12">
+                <label class="form-label fw-semibold">Notas adicionales</label>
+                <textarea class="form-control" rows="3" placeholder="Indicaciones para los profesionales" @bind="UserProfile.Notes"></textarea>
+            </div>
+        </div>
+    </div>
+
+    <div class="account-sidebar">
+        <div class="surface-card">
+            <h6 class="fw-bold mb-3">Preferencias</h6>
+            <div class="d-flex flex-column gap-3">
+                <div class="d-flex align-items-center justify-content-between">
+                    <span>Recibir recordatorios</span>
+                    <div class="form-check form-switch mb-0">
+                        <input class="form-check-input" type="checkbox" checked />
+                    </div>
+                </div>
+                <div class="d-flex align-items-center justify-content-between">
+                    <span>Confirmaciones por SMS</span>
+                    <div class="form-check form-switch mb-0">
+                        <input class="form-check-input" type="checkbox" />
+                    </div>
+                </div>
+                <div class="d-flex align-items-center justify-content-between">
+                    <span>Notificaciones de nuevas ofertas</span>
+                    <div class="form-check form-switch mb-0">
+                        <input class="form-check-input" type="checkbox" checked />
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="surface-card">
+            <h6 class="fw-bold mb-2">Mantenimiento rápido</h6>
+            <ul class="list-unstyled d-flex flex-column gap-2 mb-0">
+                <li class="d-flex align-items-center gap-2 cursor-pointer"><i class="fa-solid fa-key text-primary"></i> Cambiar contraseña</li>
+                <li class="d-flex align-items-center gap-2 cursor-pointer"><i class="fa-solid fa-map-location-dot text-primary"></i> Direcciones guardadas</li>
+                <li class="d-flex align-items-center gap-2 cursor-pointer"><i class="fa-solid fa-credit-card text-primary"></i> Medios de pago</li>
+            </ul>
+        </div>
+    </div>
+</div>
+
+@if (showAddressModal)
+{
+    <div class="modal fade show d-block" tabindex="-1" style="background-color: rgba(0,0,0,0.5);">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Nueva dirección</h5>
+                    <button type="button" class="btn-close" @onclick="CloseAddressModal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">Calle y número</label>
+                        <input type="text" class="form-control" @bind="newAddress.Street" placeholder="Ej. Av. Libertador 1234" />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Ciudad</label>
+                        <input type="text" class="form-control" @bind="newAddress.City" placeholder="Ej. Buenos Aires" />
+                    </div>
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" @bind="newAddress.IsPrimary" id="isPrimaryCheck">
+                        <label class="form-check-label" for="isPrimaryCheck">
+                            Establecer como principal
+                        </label>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" @onclick="CloseAddressModal">Cancelar</button>
+                    <button type="button" class="btn btn-primary" @onclick="SaveAddress">Guardar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@using ClientLibrary.Services
+@inject IUserProfileService UserProfileService
+
+@code {
+    [Parameter] public UserProfileModel UserProfile { get; set; } = new();
+    
+    private List<AddressModel> Addresses = new();
+
+    private bool showAddressModal = false;
+    private AddressModel newAddress = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadAddresses();
+    }
+
+    private async Task LoadAddresses()
+    {
+        try
+        {
+            Addresses = await UserProfileService.GetAddressesAsync() ?? new();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading addresses: {ex.Message}");
+        }
+    }
+
+    private void ShowAddAddressModal()
+    {
+        newAddress = new();
+        showAddressModal = true;
+    }
+
+    private void CloseAddressModal()
+    {
+        showAddressModal = false;
+    }
+
+    private async Task SaveAddress()
+    {
+        // Call API to save address
+        var response = await UserProfileService.AddAddressAsync(newAddress);
+        if (response.success)
+        {
+            await LoadAddresses(); // Refresh list
+            showAddressModal = false;
+            await JS.ToastrSuccess("Dirección agregada");
+        }
+        else
+        {
+            await JS.ToastrError(response.Message);
+        }
+    }
+
+    private async Task DeleteAddress(AddressModel address)
+    {
+        var response = await UserProfileService.DeleteAddressAsync(address);
+        if (response.success)
+        {
+            await LoadAddresses();
+            await JS.ToastrSuccess("Dirección eliminada");
+        }
+        else
+        {
+            await JS.ToastrError(response.Message);
+        }
+    }
+
+    private async Task SaveChanges()
+    {
+        var response = await UserProfileService.UpdateProfileAsync(UserProfile);
+        if (response.success)
+        {
+            await JS.ToastrSuccess("Perfil actualizado correctamente");
+        }
+        else
+        {
+            await JS.ToastrError(response.Message);
+        }
+    }
+}

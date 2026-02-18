@@ -86,8 +86,8 @@
 
     private bool IsDateAvailable(DateTime date)
     {
-        // Simple check if the professional works on this day of week
-        return Availabilities.Any(a => a.DayOfWeek == date.DayOfWeek && !a.IsHoliday);
+        // Check if the professional works on this specific date
+        return Availabilities.Any(a => a.Date.Date == date.Date);
     }
 
     private async Task SelectDate(DateTime date)
@@ -100,7 +100,8 @@
     private Task GenerateSlots()
     {
         AvailableSlots.Clear();
-        var availability = Availabilities.FirstOrDefault(a => a.DayOfWeek == SelectedDate.DayOfWeek && !a.IsHoliday);
+        // Match by Date
+        var availability = Availabilities.FirstOrDefault(a => a.Date.Date == SelectedDate.Date);
         
         if (availability != null)
         {

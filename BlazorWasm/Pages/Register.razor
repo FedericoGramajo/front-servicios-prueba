@@ -1,5 +1,11 @@
 @attribute [Route(RouteConstants.Register)]
 @using ClientLibrary.Helper
+@using ClientLibrary.Models.Authentication
+@using ClientLibrary.Services
+@inject IAuthenticationService authService
+@inject IJSRuntime js
+@inject NavigationManager navManager
+
 <PageTitle>Crear cuenta - ServicioAhora!</PageTitle>
 
 <section class="auth-page py-5 py-lg-6">
@@ -15,61 +21,131 @@
                             </a>
                             <p class="text-muted mb-0">Creá tu cuenta para contratar o gestionar servicios hogareños</p>
                         </div>
-                        <form>
+                        <EditForm Model="User" OnSubmit="HandleRegister" FormName="registerForm">
+                            <DataAnnotationsValidator />
+                            <ValidationSummary class="text-danger" />
                             <div class="row g-3">
                                 <div class="col-md-6">
                                     <label class="form-label fw-semibold" for="firstName">Nombre</label>
-                                    <input type="text" class="form-control" id="firstName" placeholder="María" required>
+                                    <InputText class="form-control" id="firstName" placeholder="María" @bind-Value="FirstName" />
                                 </div>
                                 <div class="col-md-6">
                                     <label class="form-label fw-semibold" for="lastName">Apellido</label>
-                                    <input type="text" class="form-control" id="lastName" placeholder="Pérez" required>
+                                    <InputText class="form-control" id="lastName" placeholder="Pérez" @bind-Value="LastName" />
                                 </div>
                                 <div class="col-md-6">
                                     <label class="form-label fw-semibold" for="email">Correo electrónico</label>
-                                    <input type="email" class="form-control" id="email" placeholder="tu@email.com" required>
+                                    <InputText class="form-control" id="email" placeholder="tu@email.com" @bind-Value="User.Email" />
+                                    <ValidationMessage For="@(() => User.Email)" />
                                 </div>
                                 <div class="col-md-6">
                                     <label class="form-label fw-semibold" for="phone">Teléfono</label>
-                                    <input type="tel" class="form-control" id="phone" placeholder="11 5555 1111" required>
+                                    <InputText class="form-control" id="phone" placeholder="11 5555 1111" @bind-Value="User.PhoneNumber" />
+                                    <ValidationMessage For="@(() => User.PhoneNumber)" />
                                 </div>
                                 <div class="col-md-6">
                                     <label class="form-label fw-semibold" for="password">Contraseña</label>
-                                    <input type="password" class="form-control" id="password" placeholder="Mínimo 8 caracteres" required>
+                                    <InputText type="password" class="form-control" id="password" placeholder="Mínimo 8 caracteres" @bind-Value="User.Password" />
+                                    <ValidationMessage For="@(() => User.Password)" />
                                 </div>
                                 <div class="col-md-6">
                                     <label class="form-label fw-semibold" for="confirmPassword">Confirmar contraseña</label>
-                                    <input type="password" class="form-control" id="confirmPassword" placeholder="Repetí tu contraseña" required>
-                                </div>
-                                <div class="col-12">
-                                    <label class="form-label fw-semibold" for="city">Ciudad</label>
-                                    <input type="text" class="form-control" id="city" placeholder="Ej: Buenos Aires" required>
+                                    <InputText type="password" class="form-control" id="confirmPassword" placeholder="Repetí tu contraseña" @bind-Value="User.ConfirmPassword" />
+                                    <ValidationMessage For="@(() => User.ConfirmPassword)" />
                                 </div>
                                 <div class="col-12">
                                     <label class="form-label fw-semibold" for="role">¿Cómo querés usar ServicioAhora?</label>
-                                    <select class="form-select" id="role" required>
-                                        <option selected disabled value="">Elegí una opción</option>
-                                        <option value="cliente">Contratar servicios</option>
-                                        <option value="profesional">Ofrecer mis servicios</option>
-                                        <option value="ambos">Ambas opciones</option>
-                                    </select>
+                                    <InputSelect class="form-select" id="role" @bind-Value="User.UserType">
+                                        <option value="@UserType.Customer">Contratar servicios</option>
+                                        <option value="@UserType.Professional">Ofrecer mis servicios</option>
+                                    </InputSelect>
                                 </div>
                                 <div class="col-12 form-check">
-                                    <input class="form-check-input" type="checkbox" id="terms" required>
+                                    <InputCheckbox class="form-check-input" id="terms" @bind-Value="AcceptedTerms" />
                                     <label class="form-check-label" for="terms">
                                         Acepto los <a href="#">términos y condiciones</a> y autorizo contacto para coordinación de servicios.
                                     </label>
                                 </div>
                             </div>
                             <div class="d-grid gap-2 mt-4">
-                                <button type="submit" class="btn btn-primary btn-lg">Crear cuenta</button>
+                                @if (!string.IsNullOrEmpty(ErrorMessage))
+                                {
+                                    <div class="alert alert-danger py-2 mb-2">@ErrorMessage</div>
+                                }
+                                <button type="submit" class="btn btn-primary btn-lg" disabled="@IsLoading">
+                                    @if (IsLoading)
+                                    {
+                                        <span class="spinner-border spinner-border-sm me-1" role="status"></span>
+                                        <span>Creando cuenta...</span>
+                                    }
+                                    else
+                                    {
+                                        <span>Crear cuenta</span>
+                                    }
+                                </button>
                                 <a class="btn btn-outline-primary" href="@RouteConstants.Login">Ya tengo una cuenta</a>
                                 <a class="btn btn-link" href="@RouteConstants.Home">Volver al inicio</a>
                             </div>
-                        </form>
+                        </EditForm>
                     </div>
                 </div>
             </div>
         </div>
     </div>
 </section>
+
+@code {
+    private CreateUser User { get; set; } = new() { UserType = UserType.Customer };
+    private string FirstName { get; set; } = "";
+    private string LastName { get; set; } = "";
+    private bool AcceptedTerms { get; set; }
+    private bool IsLoading { get; set; }
+    private string? ErrorMessage { get; set; }
+
+    private async Task HandleRegister(EditContext editContext)
+    {
+        ErrorMessage = null;
+
+        // Compose FullName BEFORE validation
+        User.FullName = $"{FirstName.Trim()} {LastName.Trim()}".Trim();
+
+        if (string.IsNullOrWhiteSpace(FirstName) || string.IsNullOrWhiteSpace(LastName))
+        {
+            ErrorMessage = "Nombre y apellido son obligatorios.";
+            return;
+        }
+
+        if (!editContext.Validate())
+            return;
+
+        if (!AcceptedTerms)
+        {
+            ErrorMessage = "Debés aceptar los términos y condiciones.";
+            return;
+        }
+
+        IsLoading = true;
+        try
+        {
+            var result = await authService.CreateUser(User);
+            if (result.success)
+            {
+                await js.ToastrSuccess("¡Cuenta creada exitosamente! Iniciá sesión.");
+                navManager.NavigateTo(RouteConstants.Login);
+            }
+            else
+            {
+                ErrorMessage = result.Message ?? "Error al crear la cuenta.";
+            }
+        }
+        catch (Exception ex)
+        {
+            ErrorMessage = "Error de conexión. Intentá de nuevo.";
+            Console.WriteLine(ex);
+        }
+        finally
+        {
+            IsLoading = false;
+        }
+    }
+}

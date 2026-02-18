@@ -19,11 +19,10 @@ namespace ClientLibrary.State
         
         public event Action? OnChange;
 
-        public async Task LoadCategoriesAsync()
+        public async Task LoadCategoriesAsync(bool forceLoad = false)
         {
-            // Only load if not already loaded (simple caching)
-            // You could add a 'forceHelper' parameter if needed
-            if (Categories != null && ((List<GetCategory>)Categories).Count > 0) 
+            // Only load if not already loaded (simple caching) unless forced
+            if (!forceLoad && Categories != null && ((List<GetCategory>)Categories).Any()) 
             {
                 return;
             }

@@ -7,8 +7,7 @@ namespace ClientLibrary.Helper
     {
         public static readonly IReadOnlyList<MenuActionModel> AccountActions = new List<MenuActionModel>
         {
-            new("Mi perfil", RouteConstants.Profile),
-            new("Historial de servicios", RouteConstants.UserServices),
+            new("Mi perfil", RouteConstants.ClientDashboard),
             new("Panel profesional", RouteConstants.ProfessionalDashboard),
             new("Panel administrador", RouteConstants.AdminDashboard),
             new("Cerrar sesión", RouteConstants.Logout),

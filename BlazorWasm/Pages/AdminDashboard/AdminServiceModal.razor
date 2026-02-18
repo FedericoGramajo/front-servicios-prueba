@@ -1,0 +1,63 @@
+@using ClientLibrary.Models.ServicioAhora.ServOffering
+@using ClientLibrary.Models.Category
+
+@if (ShowModal)
+{
+    <div class="modal fade show" style="display:block; background-color: rgba(0,0,0,0.5);" tabindex="-1" role="dialog" aria-modal="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">@(IsEditing ? "Editar Servicio" : "Nuevo Servicio")</h5>
+                    <button type="button" class="btn-close" @onclick="OnClose" disabled="@IsLoading"></button>
+                </div>
+
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">Nombre del servicio</label>
+                        <input class="form-control" @bind="Model.Name" placeholder="Ej. Reparación de aire acondicionado" />
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Rubro (Categoría)</label>
+                        <select class="form-select" @bind="Model.CategoryId">
+                            <option value="">Seleccionar rubro...</option>
+                            @foreach (var cat in Categories)
+                            {
+                                <option value="@cat.Id">@cat.Name</option>
+                            }
+                        </select>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Precio base</label>
+                        <input type="number" class="form-control" @bind="Model.BasePrice" />
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Descripción</label>
+                        <textarea class="form-control" rows="3" @bind="Model.Description"></textarea>
+                    </div>
+                </div>
+
+                <div class="modal-footer">
+                    <button class="btn btn-outline-secondary" @onclick="OnClose" disabled="@IsLoading">Cancelar</button>
+                    <button class="btn btn-primary" @onclick="OnSave" disabled="@IsLoading">
+                        @(IsLoading ? "Guardando..." : "Guardar cambios")
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="modal-backdrop fade show"></div>
+}
+
+@code {
+    [Parameter] public bool ShowModal { get; set; }
+    [Parameter] public bool IsEditing { get; set; }
+    [Parameter] public UpdateServiceOffering Model { get; set; } = new();
+    [Parameter] public List<GetCategory> Categories { get; set; } = new();
+    [Parameter] public bool IsLoading { get; set; }
+    
+    [Parameter] public EventCallback OnClose { get; set; }
+    [Parameter] public EventCallback OnSave { get; set; }
+}

@@ -79,8 +79,10 @@
                     </div>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" @onclick="CloseAddServiceModal">Cancelar</button>
-                    <button type="button" class="btn btn-primary" @onclick="SaveService">Publicar</button>
+                    <button type="button" class="btn btn-secondary" @onclick="CloseAddServiceModal" disabled="@IsLoading">Cancelar</button>
+                    <button type="button" class="btn btn-primary" @onclick="SaveService" disabled="@IsLoading">
+                        @(IsLoading ? "Procesando..." : "Publicar")
+                    </button>
                 </div>
             </div>
         </div>
@@ -94,6 +96,7 @@
     private bool showAddServiceModal = false;
     private ServiceFormModel newService = new();
     private bool isEditingService = false;
+    private bool IsLoading = false;
 
     public void OpenAddServiceModal(string? category = null, ServiceSummary? serviceToEdit = null)
     {
@@ -132,19 +135,32 @@
 
     private async Task SaveService()
     {
-        if (isEditingService)
+        IsLoading = true;
+        try
         {
-             await DashboardService.UpdateServiceAsync(newService);
-             await JS.ToastrSuccess("Servicio actualizado correctamente.");
+            if (isEditingService)
+            {
+                 await DashboardService.UpdateServiceAsync(newService);
+                 await JS.ToastrSuccess("Servicio actualizado correctamente.");
+            }
+            else
+            {
+                await DashboardService.AddServiceAsync(newService);
+                await JS.ToastrSuccess("Servicio publicado correctamente.");
+            }
+            
+            showAddServiceModal = false;
+            await OnServiceChanged.InvokeAsync();
         }
-        else
+        catch (Exception ex)
         {
-            await DashboardService.AddServiceAsync(newService);
-            await JS.ToastrSuccess("Servicio publicado correctamente.");
+            Console.WriteLine(ex);
+            await JS.ToastrError("Error al guardar el servicio.");
         }
-        
-        showAddServiceModal = false;
-        await OnServiceChanged.InvokeAsync();
+        finally
+        {
+            IsLoading = false;
+        }
     }
 
     private void EditService(ServiceSummary service, string category)

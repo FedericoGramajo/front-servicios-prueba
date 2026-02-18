@@ -2,242 +2,266 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
-using ClientLibrary.Models.Landing;
+using ClientLibrary.Helper;
 using ClientLibrary.Models;
-using ClientLibrary.Services.Contracts;
 using ClientLibrary.Models.Booking;
+using ClientLibrary.Models.Landing;
+using ClientLibrary.Services.Contracts;
 
 namespace ClientLibrary.Services.Implementations;
 
-public class ProfessionalDashboardService : IProfessionalDashboardService
+public class ProfessionalDashboardService(IHttpClientHelper httpClient, IApiCallHelper apiHelper) : IProfessionalDashboardService
 {
-    // In-Memory Storage (Mock DB)
-    private readonly List<ServiceTransaction> _transactions = new();
-    private readonly List<ServiceGroup> _serviceGroups = new();
-    
-    // Category Management
-    private readonly List<string> _myCategories = new();
-    private readonly List<string> _allAvailableCategories = new()
+    public async Task<DashboardMetrics> GetDashboardMetricsAsync()
     {
-        "Limpieza y orden", "Mantenimiento y reparaciones", "Jardinería", "Decoración", 
-        "Plomería", "Electricidad", "Gasista", "Albañilería", "Fletes y Mudanzas", 
-        "Belleza y Estética", "Cuidado de Personas", "Mecánica Automotriz", "Informática"
-    };
-
-    public ProfessionalDashboardService()
-    {
-        // NO MOCK DATA GENERATION - Start Empty as requested
-        // Initialize with 0 transactions and empty service groups
-    }
-
-    public Task<DashboardMetrics> GetDashboardMetricsAsync()
-    {
-        var metrics = new DashboardMetrics(
-            ActiveServices: _serviceGroups.Sum(g => g.Services.Count),
-            NewRequests: 0, 
-            InProgress: 0,  
-            Rating: 0.0
-        );
-        return Task.FromResult(metrics);
-    }
-
-    public Task<List<ServiceGroup>> GetServiceGroupsAsync()
-    {
-        // Return only service groups for categories I have selected
-        return Task.FromResult(_serviceGroups);
-    }
-
-    public Task<List<ServiceTransaction>> GetTransactionsAsync(DateTime start, DateTime end, string? status, string? city)
-    {
-        var query = _transactions
-            .Where(t => t.Date >= start && t.Date <= end);
-
-        if (!string.IsNullOrEmpty(status))
+        var client = await httpClient.GetPrivateClientAsync();
+        var apiCall = new ApiCall
         {
-            query = query.Where(t => t.Status == status);
-        }
-
-        if (!string.IsNullOrEmpty(city))
-        {
-            query = query.Where(t => t.City == city);
-        }
-
-        return Task.FromResult(query.ToList());
+            Route = Constant.Professional.GetMetrics,
+            Type = Constant.ApiCallType.Get,
+            Client = client
+        };
+        var result = await apiHelper.ApiCallTypeCall<Dummy>(apiCall);
+        return await apiHelper.GetServiceResponse<DashboardMetrics>(result) ?? new DashboardMetrics(0, 0, 0, 0.0);
     }
 
-    public Task AddServiceAsync(ServiceFormModel service)
+    public async Task<List<ServiceGroup>> GetServiceGroupsAsync()
     {
-        // Add to the correct group
-        var group = _serviceGroups.FirstOrDefault(g => g.Category == service.Category);
-        if (group == null)
+        var client = await httpClient.GetPrivateClientAsync();
+        var apiCall = new ApiCall
         {
-            // If group doesn't exist (maybe category was just added), create it
-            // Only if it is in my categories
-            if (_myCategories.Contains(service.Category))
-            {
-                group = new ServiceGroup(service.Category, new List<ServiceSummary>());
-                _serviceGroups.Add(group);
-            }
-            else
-            {
-                // Can't add service to a category I don't have
-                return Task.CompletedTask; 
-            }
-        }
-        
-        group.Services.Add(new ServiceSummary(
-            Guid.NewGuid().ToString(), 
-            service.Name, 
-            service.Price, 
-            service.Description
-        ));
-
-        return Task.CompletedTask;
+            Route = Constant.Professional.GetServiceGroups,
+            Type = Constant.ApiCallType.Get,
+            Client = client
+        };
+        var result = await apiHelper.ApiCallTypeCall<Dummy>(apiCall);
+        return await apiHelper.GetServiceResponse<List<ServiceGroup>>(result) ?? new List<ServiceGroup>();
     }
 
-    public Task UpdateServiceAsync(ServiceFormModel service)
+    public async Task<List<ServiceTransaction>> GetTransactionsAsync(DateTime start, DateTime end, string? status, string? city)
     {
-        if (string.IsNullOrEmpty(service.Slug)) return Task.CompletedTask;
+        var client = await httpClient.GetPrivateClientAsync();
+        // Construct query string manually or via helper if available
+        // Simple manual construction for now
+        string query = $"?start={start:yyyy-MM-dd}&end={end:yyyy-MM-dd}";
+        if (!string.IsNullOrEmpty(status)) query += $"&status={status}";
+        if (!string.IsNullOrEmpty(city)) query += $"&city={city}";
 
-        var group = _serviceGroups.FirstOrDefault(g => g.Category == service.Category);
-        if (group != null)
+        var apiCall = new ApiCall
         {
-            var existingService = group.Services.FirstOrDefault(s => s.Slug == service.Slug);
-            if (existingService != null)
-            {
-                // Records are immutable, so we must replace it
-                var newService = new ServiceSummary(
-                    existingService.Slug,
-                    service.Name,
-                    service.Price,
-                    service.Description
-                );
-
-                var index = group.Services.IndexOf(existingService);
-                group.Services[index] = newService;
-            }
-        }
-        return Task.CompletedTask;
+            Route = Constant.Professional.GetTransactions + query,
+            Type = Constant.ApiCallType.Get,
+            Client = client
+        };
+        var result = await apiHelper.ApiCallTypeCall<Dummy>(apiCall);
+        return await apiHelper.GetServiceResponse<List<ServiceTransaction>>(result) ?? new List<ServiceTransaction>();
     }
 
-    public Task DeleteServiceAsync(string serviceSlug)
+    public async Task AddServiceAsync(ServiceFormModel service)
     {
-        return Task.CompletedTask;
+        var client = await httpClient.GetPrivateClientAsync();
+        var apiCall = new ApiCall
+        {
+            Route = Constant.Professional.AddService,
+            Type = Constant.ApiCallType.Post,
+            Client = client,
+            Model = service
+        };
+        await apiHelper.ApiCallTypeCall<ServiceFormModel>(apiCall);
+    }
+
+    public async Task UpdateServiceAsync(ServiceFormModel service)
+    {
+        var client = await httpClient.GetPrivateClientAsync();
+        var apiCall = new ApiCall
+        {
+            Route = Constant.Professional.UpdateService,
+            Type = Constant.ApiCallType.Update,
+            Client = client,
+            Model = service
+        };
+        await apiHelper.ApiCallTypeCall<ServiceFormModel>(apiCall);
+    }
+
+    public async Task DeleteServiceAsync(string serviceSlug)
+    {
+        var client = await httpClient.GetPrivateClientAsync();
+        var apiCall = new ApiCall
+        {
+            Route = $"{Constant.Professional.DeleteService}/{serviceSlug}",
+            Type = Constant.ApiCallType.Delete,
+            Client = client
+        };
+        await apiHelper.ApiCallTypeCall<Dummy>(apiCall);
     }
 
     // Category Management
-    public Task<List<string>> GetAvailableCategoriesAsync()
+    public async Task<List<string>> GetAvailableCategoriesAsync()
     {
-        return Task.FromResult(_allAvailableCategories);
+        var client = await httpClient.GetPrivateClientAsync();
+        var apiCall = new ApiCall
+        {
+            Route = Constant.Professional.GetAvailableCategories,
+            Type = Constant.ApiCallType.Get,
+            Client = client
+        };
+        var result = await apiHelper.ApiCallTypeCall<Dummy>(apiCall);
+        return await apiHelper.GetServiceResponse<List<string>>(result) ?? new List<string>();
     }
 
-    public Task<List<string>> GetMyCategoriesAsync()
+    public async Task<List<string>> GetMyCategoriesAsync()
     {
-        return Task.FromResult(_myCategories);
+        var client = await httpClient.GetPrivateClientAsync();
+        var apiCall = new ApiCall
+        {
+            Route = Constant.Professional.GetMyCategories,
+            Type = Constant.ApiCallType.Get,
+            Client = client
+        };
+        var result = await apiHelper.ApiCallTypeCall<Dummy>(apiCall);
+        return await apiHelper.GetServiceResponse<List<string>>(result) ?? new List<string>();
     }
 
-    public Task<ServiceResponse> AddMyCategoryAsync(string category)
+    public async Task<ServiceResponse> AddMyCategoryAsync(string category)
     {
-        if (_myCategories.Count >= 2)
+        var client = await httpClient.GetPrivateClientAsync();
+        // Assuming category is sent as a string in body or query? 
+        // ApiCall expects an object Model. Let's wrap it or send as is if supported.
+        // Usually safer to wrap in a simple object or send as query param if simple string.
+        // Let's assume we send it as a dedicated wrapper or just query for simplicity if API supports it.
+        // But to be proper, let's assume body with "Category" property or similar. 
+        // For now, let's send it as a stringModel to body.
+        var apiCall = new ApiCall
         {
-            return Task.FromResult(new ServiceResponse(false, "Solo puedes seleccionar un máximo de 2 rubros."));
-        }
-
-        if (_myCategories.Contains(category))
-        {
-             return Task.FromResult(new ServiceResponse(false, "Ya tienes este rubro seleccionado."));
-        }
-
-        _myCategories.Add(category);
-        
-        // Create an empty service group for this category so it shows up
-        if (!_serviceGroups.Any(g => g.Category == category))
-        {
-            _serviceGroups.Add(new ServiceGroup(category, new List<ServiceSummary>()));
-        }
-
-        return Task.FromResult(new ServiceResponse(true, "Rubro agregado correctamente."));
+            Route = Constant.Professional.AddMyCategory,
+            Type = Constant.ApiCallType.Post,
+            Client = client,
+            Model = new { Category = category }
+        };
+        var result = await apiHelper.ApiCallTypeCall<object>(apiCall);
+        return await apiHelper.GetServiceResponse<ServiceResponse>(result);
     }
 
-    public Task<ServiceResponse> RemoveMyCategoryAsync(string category)
+    public async Task<ServiceResponse> RemoveMyCategoryAsync(string category)
     {
-        if (_myCategories.Remove(category))
+        var client = await httpClient.GetPrivateClientAsync();
+        var apiCall = new ApiCall
         {
-            // Also remove the service group and its services? 
-            // For now, let's keep it simple and remove the group.
-            var group = _serviceGroups.FirstOrDefault(g => g.Category == category);
-            if (group != null)
-            {
-                _serviceGroups.Remove(group);
-            }
-            return Task.FromResult(new ServiceResponse(true, "Rubro eliminado correctamente."));
-        }
-        return Task.FromResult(new ServiceResponse(false, "No se encontró el rubro."));
+            Route = $"{Constant.Professional.RemoveMyCategory}/{category}", // or query
+            Type = Constant.ApiCallType.Delete,
+            Client = client
+        };
+        var result = await apiHelper.ApiCallTypeCall<Dummy>(apiCall);
+        return await apiHelper.GetServiceResponse<ServiceResponse>(result);
     }
 
     // Availability Management
-    private readonly List<ProfessionalAvailability> _availabilities = new();
-
-    public Task<List<ProfessionalAvailability>> GetAvailabilityAsync()
+    public async Task<List<ProfessionalAvailability>> GetAvailabilityAsync(string professionalId)
     {
-        return Task.FromResult(_availabilities.OrderBy(a => a.DayOfWeek).ToList());
+        var client = await httpClient.GetPrivateClientAsync();
+        var apiCall = new ApiCall
+        {
+            Route = $"{Constant.Professional.GetAvailability}/{professionalId}",
+            Type = Constant.ApiCallType.Get,
+            Client = client
+        };
+        var result = await apiHelper.ApiCallTypeCall<Dummy>(apiCall);
+        return await apiHelper.GetServiceResponse<List<ProfessionalAvailability>>(result) ?? new List<ProfessionalAvailability>();
     }
 
-    public Task<ServiceResponse> AddAvailabilityAsync(ProfessionalAvailability availability)
+    public async Task<ServiceResponse> AddAvailabilityAsync(AddAvailabilityRequest request)
     {
-        bool isDuplicate = false;
-        if (availability.SpecificDate.HasValue)
+        var client = await httpClient.GetPrivateClientAsync();
+        var apiCall = new ApiCall
         {
-            isDuplicate = _availabilities.Any(a => 
-                a.SpecificDate.HasValue && 
-                a.SpecificDate.Value.Date == availability.SpecificDate.Value.Date && 
-                a.StartTime == availability.StartTime && 
-                a.EndTime == availability.EndTime);
+            Route = Constant.Professional.AddAvailability,
+            Type = Constant.ApiCallType.Post,
+            Client = client,
+            Model = request
+        };
+        var result = await apiHelper.ApiCallTypeCall<AddAvailabilityRequest>(apiCall);
+        
+        if (result == null)
+            return new ServiceResponse(false, "Error de conexión con el servidor");
+
+        if (result.IsSuccessStatusCode)
+        {
+            var response = await apiHelper.GetServiceResponse<ServiceResponse>(result);
+            return response ?? new ServiceResponse(true, "Horario agregado correctamente");
         }
         else
         {
-             isDuplicate = _availabilities.Any(a => 
-                !a.SpecificDate.HasValue &&
-                a.DayOfWeek == availability.DayOfWeek && 
-                a.StartTime == availability.StartTime && 
-                a.EndTime == availability.EndTime);
+            var response = await apiHelper.GetServiceResponse<ServiceResponse>(result);
+            return response ?? new ServiceResponse(false, $"Error del servidor: {result.StatusCode}");
         }
-
-        if (isDuplicate)
-        {
-            return Task.FromResult(new ServiceResponse(false, "Este horario ya está agregado."));
-        }
-
-        availability.Id = Guid.NewGuid(); // Assign ID
-        _availabilities.Add(availability);
-        return Task.FromResult(new ServiceResponse(true, "Horario agregado correctamente."));
     }
 
-    public Task<ServiceResponse> RemoveAvailabilityAsync(int dayOfWeek)
+
+
+    public async Task<ServiceResponse> RemoveAvailabilityAsync(Guid id)
     {
-        // Interface uses int dayOfWeek, model uses DayOfWeek enum. Casting needed.
-        var targetDay = (DayOfWeek)dayOfWeek;
+        var client = await httpClient.GetPrivateClientAsync();
+        var apiCall = new ApiCall
+        {
+            Route = $"{Constant.Professional.RemoveAvailability}/{id}",
+            Type = Constant.ApiCallType.Delete,
+            Client = client
+        };
+        var result = await apiHelper.ApiCallTypeCall<Dummy>(apiCall);
         
-        var slots = _availabilities.Where(a => a.DayOfWeek == targetDay).ToList();
-        if (slots.Any())
+        if (result == null)
+            return new ServiceResponse(false, "Error de conexión con el servidor");
+
+        if (result.IsSuccessStatusCode)
         {
-            foreach(var slot in slots)
-            {
-                _availabilities.Remove(slot);
-            }
-            return Task.FromResult(new ServiceResponse(true, "Horarios eliminados para el día seleccionado."));
+            var response = await apiHelper.GetServiceResponse<ServiceResponse>(result);
+            return response ?? new ServiceResponse(true, "Horario eliminado correctamente");
         }
-        return Task.FromResult(new ServiceResponse(false, "No se encontraron horarios para ese día."));
+        else
+        {
+            var response = await apiHelper.GetServiceResponse<ServiceResponse>(result);
+            return response ?? new ServiceResponse(false, $"Error del servidor: {result.StatusCode}");
+        }
+    }
+    
+    // Certification Management
+    public async Task<List<CertificationModel>> GetCertificationsAsync()
+    {
+        var client = await httpClient.GetPrivateClientAsync();
+        var apiCall = new ApiCall
+        {
+            Route = Constant.Professional.GetCertifications,
+            Type = Constant.ApiCallType.Get,
+            Client = client
+        };
+        var result = await apiHelper.ApiCallTypeCall<Dummy>(apiCall);
+        return await apiHelper.GetServiceResponse<List<CertificationModel>>(result) ?? new List<CertificationModel>();
     }
 
-    public Task<ServiceResponse> RemoveAvailabilityAsync(Guid id)
+    public async Task<ServiceResponse> AddCertificationAsync(CertificationModel certification)
     {
-        var slot = _availabilities.FirstOrDefault(a => a.Id == id);
-        if (slot != null)
+        var client = await httpClient.GetPrivateClientAsync();
+        var apiCall = new ApiCall
         {
-            _availabilities.Remove(slot);
-            return Task.FromResult(new ServiceResponse(true, "Horario eliminado."));
-        }
-        return Task.FromResult(new ServiceResponse(false, "No se encontró el horario."));
+            Route = Constant.Professional.AddCertification,
+            Type = Constant.ApiCallType.Post,
+            Client = client,
+            Model = certification
+        };
+        var result = await apiHelper.ApiCallTypeCall<CertificationModel>(apiCall);
+        return await apiHelper.GetServiceResponse<ServiceResponse>(result);
+    }
+
+    public async Task<ServiceResponse> RemoveCertificationAsync(Guid id)
+    {
+        var client = await httpClient.GetPrivateClientAsync();
+        var apiCall = new ApiCall
+        {
+            Route = $"{Constant.Professional.RemoveCertification}/{id}",
+            Type = Constant.ApiCallType.Delete,
+            Client = client
+        };
+        var result = await apiHelper.ApiCallTypeCall<Dummy>(apiCall);
+        return await apiHelper.GetServiceResponse<ServiceResponse>(result);
     }
 }
