@@ -1,7 +1,7 @@
 @attribute [Route(RouteConstants.Profile)]
 @using System.Collections.Generic
-@using ClientLibrary.Helper
-@using ClientLibrary.Models.Landing
+@using ClientLibrary.Services
+@using ClientLibrary.Models.Authentication
 
 <PageTitle>Mi perfil - ServicioAhora!</PageTitle>
 
@@ -9,7 +9,7 @@
 
 
     <main class="container py-5 account-layout">
-        <div class="d-flex flex-column flex-lg-row gap-4 align-items-start">
+        <div class="d-flex flex-column gap-4">
             <div class="surface-card flex-grow-1">
                 <div class="section-heading flex-column flex-lg-row">
                     <div>
@@ -23,23 +23,46 @@
                 </div>
 
                 <div class="row g-3">
+                    <!-- Profile Picture Section -->
+                    <div class="col-12 mb-3">
+                        <div class="d-flex align-items-center gap-3">
+                            <div class="position-relative" style="width: 100px; height: 100px;">
+                                @if (!string.IsNullOrEmpty(ProfileImageDataUrl))
+                                {
+                                    <img src="@ProfileImageDataUrl" class="rounded-circle w-100 h-100 object-fit-cover border" alt="Foto de perfil" />
+                                }
+                                else
+                                {
+                                    <div class="rounded-circle w-100 h-100 bg-light d-flex align-items-center justify-content-center border">
+                                        <i class="fa-regular fa-user fa-3x text-muted"></i>
+                                    </div>
+                                }
+                                <label for="profileUpload" class="position-absolute bottom-0 end-0 btn btn-sm btn-primary rounded-circle p-1 d-flex align-items-center justify-content-center" style="width: 32px; height: 32px; cursor: pointer;">
+                                    <i class="fa-solid fa-camera fa-xs"></i>
+                                </label>
+                                <InputFile OnChange="OnInputFileChange" id="profileUpload" class="d-none" accept=".jpg, .jpeg, .png" />
+                            </div>
+                            <div>
+                                <h5 class="mb-1">Foto de perfil</h5>
+                                <p class="text-muted small mb-0">Recomendado: 300x300px, JPG o PNG.</p>
+                            </div>
+                        </div>
+                    </div>
+
                     <div class="col-md-6">
                         <label class="form-label fw-semibold">Nombre completo</label>
-                        <input class="form-control" placeholder="Tu nombre" value="María Rodríguez" />
+                        <input class="form-control" placeholder="Tu nombre" @bind="UserProfile.FullName" />
                     </div>
                     <div class="col-md-6">
                         <label class="form-label fw-semibold">Correo electrónico</label>
-                        <input class="form-control" type="email" placeholder="correo@ejemplo.com" value="maria.r@correo.com" />
+                        <input class="form-control" type="email" placeholder="correo@ejemplo.com" @bind="UserProfile.Email" readonly />
                     </div>
                     <div class="col-md-6">
                         <label class="form-label fw-semibold">Teléfono</label>
-                        <input class="form-control" type="tel" placeholder="11 4444 9999" value="11 5555 2222" />
+                        <input class="form-control" type="tel" placeholder="11 4444 9999" @bind="UserProfile.PhoneNumber" />
                     </div>
-                    <div class="col-md-6">
-                        <label class="form-label fw-semibold">Ciudad</label>
-                        <input class="form-control" placeholder="Ciudad" value="Buenos Aires" />
-                    </div>
-                    <div class="col-12">
+                    
+                    <div class="col-12 mt-4">
                         <label class="form-label fw-semibold d-block mb-2">Direcciones guardadas</label>
                         @foreach (var address in Addresses)
                         {
@@ -63,61 +86,6 @@
                             <i class="fa-solid fa-plus me-1"></i> Agregar dirección
                         </button>
                     </div>
-                    <div class="col-md-6">
-                        <label class="form-label fw-semibold">Preferencia de contacto</label>
-                        <select class="form-select">
-                            <option>WhatsApp</option>
-                            <option>Email</option>
-                            <option>Llamada</option>
-                        </select>
-                    </div>
-                    <div class="col-md-6">
-                        <label class="form-label fw-semibold">Disponibilidad</label>
-                        <select class="form-select">
-                            <option>Mañana</option>
-                            <option>Tarde</option>
-                            <option>Noche</option>
-                            <option>Fines de semana</option>
-                        </select>
-                    </div>
-                    <div class="col-12">
-                        <label class="form-label fw-semibold">Notas adicionales</label>
-                        <textarea class="form-control" rows="3" placeholder="Indicaciones para los profesionales">Ingreso por cochera y preferir productos eco.</textarea>
-                    </div>
-                </div>
-            </div>
-
-            <div class="account-sidebar">
-                <div class="surface-card">
-                    <h6 class="fw-bold mb-3">Preferencias</h6>
-                    <div class="d-flex flex-column gap-3">
-                        <div class="d-flex align-items-center justify-content-between">
-                            <span>Recibir recordatorios</span>
-                            <div class="form-check form-switch mb-0">
-                                <input class="form-check-input" type="checkbox" checked />
-                            </div>
-                        </div>
-                        <div class="d-flex align-items-center justify-content-between">
-                            <span>Confirmaciones por SMS</span>
-                            <div class="form-check form-switch mb-0">
-                                <input class="form-check-input" type="checkbox" />
-                            </div>
-                        </div>
-                        <div class="d-flex align-items-center justify-content-between">
-                            <span>Notificaciones de nuevas ofertas</span>
-                            <div class="form-check form-switch mb-0">
-                                <input class="form-check-input" type="checkbox" checked />
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <div class="surface-card">
-                    <h6 class="fw-bold mb-2">Mantenimiento rápido</h6>
-                    <ul class="list-unstyled d-flex flex-column gap-2 mb-0">
-                        <li class="d-flex align-items-center gap-2"><i class="fa-solid fa-key text-primary"></i> Cambiar contraseña</li>
-                        <li class="d-flex align-items-center gap-2"><i class="fa-solid fa-map-location-dot text-primary"></i> Direcciones guardadas</li>
-                        <li class="d-flex align-items-center gap-2"><i class="fa-solid fa-credit-card text-primary"></i> Medios de pago</li>
-                    </ul>
                 </div>
             </div>
         </div>
@@ -161,6 +129,20 @@
 </div>
 
 @code {
+    [Inject]
+    private IAuthenticationService AuthenticationService { get; set; } = default!;
+
+    private UserDto UserProfile { get; set; } = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        UserProfile = await AuthenticationService.GetMyProfile();
+        if (!string.IsNullOrEmpty(UserProfile.ProfileImage))
+        {
+            ProfileImageDataUrl = UserProfile.ProfileImage;
+        }
+    }
+
     private readonly SearchConfig SearchBar = new("Buscar servicios hogareños en ServicioAhora!", "Buscar");
 
     private readonly IReadOnlyList<MenuActionModel> AccountActions = MenuConstants.AccountActions;
@@ -193,6 +175,30 @@
 
     private bool showAddressModal = false;
     private AddressModel newAddress = new();
+    
+    // Profile Picture Logic
+    private string? ProfileImageDataUrl;
+    private const long MaxFileSize = 1024 * 1024 * 5; // 5MB
+
+    private async Task OnInputFileChange(InputFileChangeEventArgs e)
+    {
+        try
+        {
+            var file = e.File;
+            if (file != null)
+            {
+                var resizedFile = await file.RequestImageFileAsync(file.ContentType, 300, 300);
+                var buffer = new byte[resizedFile.Size];
+                await resizedFile.OpenReadStream(MaxFileSize).ReadAsync(buffer);
+                var base64 = Convert.ToBase64String(buffer);
+                ProfileImageDataUrl = $"data:{file.ContentType};base64,{base64}";
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error uploading image: {ex.Message}");
+        }
+    }
 
     private void ShowAddAddressModal()
     {

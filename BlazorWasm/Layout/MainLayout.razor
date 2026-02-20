@@ -10,7 +10,9 @@
                    BrandHref="@RouteConstants.Home"
                    Search="@SearchBar"
                    AccountLinks="@AccountLinks"
-                   NavLinks="@PrimaryNavLinks" />
+                   NavLinks="@PrimaryNavLinks"
+                   UserName="@UserName"
+                   UserInitial="@UserInitial" />
 
     <main>
         <CustomErrorBoundary>
@@ -34,6 +36,9 @@
 
     private List<MenuActionModel> AccountLinks { get; set; } = new();
     private readonly IReadOnlyList<NavLinkModel> PrimaryNavLinks = MenuConstants.PrimaryNavLinks;
+    
+    private string UserName { get; set; } = string.Empty;
+    private string UserInitial { get; set; } = string.Empty;
 
     private readonly IReadOnlyList<string> FooterContact = new List<string>
     {
@@ -69,8 +74,20 @@
 
         if (user.Identity?.IsAuthenticated == true)
         {
+            // Set User Info
+            // Try to get name from Name claim (http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name) or fallback
+            // Note: Blazor WASM mapping depends on options.UserOptions.NameClaimType
+            var fullName = user.Identity.Name;
+            if (string.IsNullOrEmpty(fullName))
+            {
+                 fullName = user.FindFirst("unique_name")?.Value ?? user.FindFirst(System.Security.Claims.ClaimTypes.Name)?.Value ?? "Usuario";
+            }
+            
+            UserName = fullName.Split(' ')[0]; // First name
+            UserInitial = !string.IsNullOrEmpty(UserName) ? UserName[0].ToString().ToUpper() : "U";
+
             // Common for all logged in users
-            links.Add(new("Mi perfil", RouteConstants.ClientDashboard)); // Or query string logic if needed
+            links.Add(new("Mi perfil", RouteConstants.Profile)); // Or query string logic if needed
 
             if (user.IsInRole(Constant.Administration.AdminRole))
             {
@@ -87,6 +104,9 @@
         else
         {
             // Not logged in
+            UserName = string.Empty;
+            UserInitial = string.Empty;
+
             links.Add(new("Iniciar sesión", RouteConstants.Login));
             links.Add(new("Registrarse", RouteConstants.Register));
         }

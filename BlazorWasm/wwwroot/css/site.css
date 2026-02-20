@@ -1,9 +1,114 @@
-﻿body {
-    font-family: 'Segoe UI', sans-serif;
+﻿/* Modern Typography & Reset */
+body {
+    font-family: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
     background-color: #f8f9fa;
+    color: #212529;
+    line-height: 1.6;
     margin: 0;
 }
 
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+    font-weight: 600;
+    color: #1a1a1a;
+    letter-spacing: -0.5px;
+}
+
+/* Preserve white text in hero sections */
+.hero-section h1,
+.hero-section p.lead,
+.hero-section .badge {
+    color: inherit !important;
+}
+
+a {
+    text-decoration: none;
+    transition: color 0.2s ease;
+}
+
+/* Modern Cards */
+.card,
+.surface-card {
+    border: 1px solid rgba(0, 0, 0, 0.04) !important;
+    border-radius: 12px !important;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.03);
+    background: #fff;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.card:hover {
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.06);
+}
+
+.card-body {
+    padding: 1.5rem;
+}
+
+/* Modern Buttons */
+.btn {
+    border-radius: 8px;
+    padding: 0.6rem 1.2rem;
+    font-weight: 500;
+    transition: all 0.2s ease;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.btn:active {
+    transform: scale(0.98);
+}
+
+.btn-primary {
+    background-color: #0d6efd;
+    border: none;
+}
+
+.btn-primary:hover {
+    background-color: #0b5ed7;
+    box-shadow: 0 4px 12px rgba(13, 110, 253, 0.25);
+}
+
+.btn-outline-primary {
+    border-width: 1px;
+}
+
+/* Modern Inputs */
+.form-control,
+.form-select {
+    border-radius: 8px;
+    border: 1px solid #e0e0e0;
+    padding: 0.7rem 1rem;
+    background-color: #fcfcfc;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.form-control:focus,
+.form-select:focus {
+    background-color: #fff;
+    border-color: #86b7fe;
+    box-shadow: 0 0 0 4px rgba(13, 110, 253, 0.1);
+}
+
+/* Navbar Sticky Behavior */
+.sticky-top {
+    position: sticky;
+    top: 0;
+    z-index: 1020;
+}
+
+/* Utilities */
+.shadow-sm {
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04) !important;
+}
+
+.rounded-pill {
+    border-radius: 50rem !important;
+}
+
+/* Layout Utilities */
 aside {
     top: 0;
     left: 0;
@@ -18,13 +123,5 @@ aside {
 .carousel img {
     height: 300px;
     object-fit: cover;
-    border-radius: 10px;
+    border-radius: 12px;
 }
-
-.btn {
-    transition: 0.2s ease;
-}
-
-    .btn:hover {
-        transform: translateY(-1px);
-    }

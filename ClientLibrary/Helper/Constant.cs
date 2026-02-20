@@ -40,6 +40,7 @@ namespace ClientLibrary.Helper
             public const string RequestPasswordReset    = "authentication/request-password-reset";
             public const string VerifyToken             = "authentication/verifyToken";
             public const string ChangePassword          = "authentication/change-password";
+            public const string Me                      = "authentication/me";
         }
         public static class ApiCallType
         {

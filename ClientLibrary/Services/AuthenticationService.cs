@@ -1,6 +1,8 @@
 ﻿using ClientLibrary.Helper;
 using ClientLibrary.Models;
 using ClientLibrary.Models.Authentication;
+using ClientLibrary.Models.Category;
+using System.Net.Http.Json;
 using System.Web;
 
 namespace ClientLibrary.Services
@@ -101,6 +103,38 @@ namespace ClientLibrary.Services
             var result = await apiHelper.ApiCallTypeCall<ChangePassword>(apiCall);
             return result == null ? apiHelper.ConnectionError() :
                 await apiHelper.GetServiceResponse<ServiceResponse>(result);
+        }
+
+        public async Task<UserDto> GetMyProfile()
+        {
+            var client = await httpClient.GetPrivateClientAsync();
+            var apiCall = new ApiCall
+            {
+                Route = Constant.Authentication.Me,
+                Type = Constant.ApiCallType.Get,
+                Client = client,
+                Model = null!,
+                Id = null!
+            };
+            var result = await apiHelper.ApiCallTypeCall<Dummy>(apiCall);
+            if (result.IsSuccessStatusCode)
+                return await apiHelper.GetServiceResponse<UserDto>(result);
+            else
+                return null!;
+            //try
+            //{
+            //    System.Net.Http.HttpClient privateClient = await httpClient.GetPrivateClientAsync();
+            //    var response = await privateClient.GetAsync(Constant.Authentication.Me);
+            //    if (!response.IsSuccessStatusCode) return new UserDto();
+
+            //    var content = await response.Content.ReadAsStringAsync();
+            //    var result = System.Text.Json.JsonSerializer.Deserialize<UserDto>(content, new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+            //    return result ?? new UserDto();
+            //}
+            //catch
+            //{
+            //    return new UserDto();
+            //}
         }
     }
 }

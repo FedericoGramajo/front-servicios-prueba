@@ -2,96 +2,158 @@
 @using BlazorWasm.Shared.Landing
 @using ClientLibrary.Models.Landing
 
-<header class="landing-header" id="@HeaderId">
+<style>
+    .user-greeting {
+        max-width: 0;
+        opacity: 0;
+        transition: all 0.3s ease-in-out;
+        white-space: nowrap;
+    }
+    
+    .user-menu-btn:hover .user-greeting,
+    .user-menu-btn:focus .user-greeting, 
+    .user-menu-btn[aria-expanded="true"] .user-greeting {
+        max-width: 200px; /* Expands to fit name */
+        opacity: 1;
+        margin-left: 0.5rem;
+    }
+
+    .user-avatar {
+        transition: transform 0.2s;
+    }
+
+    .user-menu-btn:hover .user-avatar {
+        transform: scale(1.05);
+    }
+</style>
+
+<header class="landing-header sticky-top shadow-sm py-2" id="@HeaderId" style="background-color: #4a7c59;">
     <div class="container">
-        <div class="topbar d-flex flex-column flex-lg-row align-items-center gap-3 gap-lg-4">
-            <a class="brand" href="@BrandHref">@Brand</a>
-            <form class="search-bar flex-grow-1" role="search" @onsubmit="OnSearch" @onsubmit:preventDefault>
-                <div class="input-group">
-                    <span class="input-group-text"><i class="fa-solid fa-magnifying-glass"></i></span>
-                    <input class="form-control" type="search" placeholder="@Search.Placeholder" aria-label="Buscar" @bind="searchTerm" />
-                    <button class="btn btn-primary" type="submit">@Search.ButtonText</button>
+        <div class="topbar d-flex align-items-center gap-3">
+            <a class="brand text-decoration-none flex-shrink-0" href="@BrandHref">
+                <img src="images/logoServioAhora.png" alt="@Brand" style="height: clamp(35px, 5vw, 55px); object-fit: contain;" />
+            </a>
+            
+            <form class="search-bar flex-grow-1 mx-lg-3" role="search" @onsubmit="OnSearch" @onsubmit:preventDefault>
+                <div class="input-group rounded-pill overflow-hidden" style="background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.25);">
+                    <span class="input-group-text bg-transparent border-0 ps-3" style="color: rgba(255,255,255,0.6);"><i class="fa-solid fa-magnifying-glass"></i></span>
+                    <input class="form-control border-0 bg-transparent shadow-none text-white" type="search" placeholder="@Search.Placeholder" aria-label="Buscar" @bind="searchTerm" style="color: white;" />
+                    <button class="btn px-4 rounded-pill m-1 fw-semibold" type="submit" style="background-color: white; color: #4a7c59;">@Search.ButtonText</button>
                 </div>
             </form>
-            @* <DarkModeToggle /> *@
-            <AuthorizeView>
-                <Authorized>
-                    <div class="dropdown me-2">
-                        <button class="btn btn-link position-relative text-dark text-decoration-none dropdown-toggle-no-caret" type="button" id="notifMenu" data-bs-toggle="dropdown" aria-expanded="false">
-                            <i class="fa-regular fa-bell fa-lg"></i>
-                            @if (NotificationState.UnreadCount > 0)
-                            {
-                                <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger border border-light">
-                                    @NotificationState.UnreadCount
-                                    <span class="visually-hidden">notificaciones</span>
-                                </span>
-                            }
-                        </button>
-                        <ul class="dropdown-menu dropdown-menu-end shadow-sm" aria-labelledby="notifMenu" style="width: 300px; max-height: 400px; overflow-y: auto;">
-                            <li class="dropdown-header d-flex justify-content-between align-items-center">
-                                <span>Notificaciones</span>
+            
+            <div class="d-flex align-items-center gap-3 flex-shrink-0 ms-2">
+                @* <DarkModeToggle /> *@
+                <AuthorizeView>
+                    <Authorized>
+                        <div class="dropdown d-flex align-items-center">
+                            <button class="btn btn-link position-relative text-white p-2 dropdown-toggle-no-caret d-flex align-items-center justify-content-center" type="button" id="notifMenu" data-bs-toggle="dropdown" aria-expanded="false" style="width: 40px; height: 40px;">
+                                <i class="fa-regular fa-bell fa-lg"></i>
                                 @if (NotificationState.UnreadCount > 0)
                                 {
-                                    <button class="btn btn-link btn-sm text-decoration-none" @onclick="MarkAllRead">Marcar leídas</button>
+                                    <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger border border-light" style="font-size: 0.6rem;">
+                                        @NotificationState.UnreadCount
+                                        <span class="visually-hidden">notificaciones</span>
+                                    </span>
                                 }
-                            </li>
-                            <li><hr class="dropdown-divider"></li>
-                            @if (NotificationState.Notifications.Any())
-                            {
-                                @foreach (var notif in NotificationState.Notifications)
+                            </button>
+                            <ul class="dropdown-menu dropdown-menu-end shadow border-0 mt-2" aria-labelledby="notifMenu" style="width: 300px; max-height: 400px; overflow-y: auto;">
+                                <li class="dropdown-header d-flex justify-content-between align-items-center bg-light py-2">
+                                    <span class="fw-bold">Notificaciones</span>
+                                    @if (NotificationState.UnreadCount > 0)
+                                    {
+                                        <button class="btn btn-link btn-sm text-decoration-none p-0" @onclick="MarkAllRead">Marcar leídas</button>
+                                    }
+                                </li>
+                                @if (NotificationState.Notifications.Any())
                                 {
-                                     <li>
-                                        <a class="dropdown-item text-wrap @(notif.IsRead ? "text-muted" : "fw-bold")" href="#" @onclick="() => ReadNotification(notif.Id)">
-                                            <small class="d-block text-primary mb-1">@notif.Title</small>
-                                            <span>@notif.Message</span>
-                                            <div class="text-end mt-1"><small class="opacity-50" style="font-size: 0.7rem;">@notif.CreatedAt.ToString("g")</small></div>
-                                        </a>
-                                    </li>
-                                    <li><hr class="dropdown-divider"></li>
+                                    @foreach (var notif in NotificationState.Notifications)
+                                    {
+                                         <li>
+                                            <a class="dropdown-item text-wrap py-2 border-bottom @(notif.IsRead ? "text-muted" : "fw-bold")" href="#" @onclick="() => ReadNotification(notif.Id)">
+                                                <small class="d-block text-success mb-1">@notif.Title</small>
+                                                <span class="d-block text-truncate" style="max-width: 250px;">@notif.Message</span>
+                                                <div class="text-end mt-1"><small class="opacity-50" style="font-size: 0.7rem;">@notif.CreatedAt.ToString("g")</small></div>
+                                            </a>
+                                        </li>
+                                    }
                                 }
-                            }
-                            else
-                            {
-                                <li class="dropdown-item text-center text-muted small py-3">No tenés notificaciones</li>
-                            }
-                        </ul>
-                    </div>
-                </Authorized>
-            </AuthorizeView>
+                                else
+                                {
+                                    <li class="dropdown-item text-center text-muted small py-4">No tenés notificaciones</li>
+                                }
+                            </ul>
+                        </div>
+                    </Authorized>
+                </AuthorizeView>
 
-            <div class="dropdown">
-                <button class="btn btn-outline-primary dropdown-toggle" type="button" id="userMenu" data-bs-toggle="dropdown" aria-expanded="false">
-                    Mi cuenta
-                </button>
-                <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userMenu">
-                    @foreach (var action in AccountLinks)
+                <div class="dropdown">
+                    @if (!string.IsNullOrEmpty(UserName)) 
                     {
-                        <li><a class="dropdown-item" href="@action.Href">@action.Text</a></li>
+                         <button class="btn btn-link p-0 border-0 text-decoration-none d-flex align-items-center user-menu-btn dropdown-toggle-no-caret" type="button" id="userMenu" data-bs-toggle="dropdown" aria-expanded="false">
+                            <div class="user-avatar rounded-circle d-flex align-items-center justify-content-center fw-bold shadow-sm" style="width: 40px; height: 40px; font-size: 1rem; min-width: 40px; background: rgba(255,255,255,0.2); color: white;">
+                                @UserInitial
+                            </div>
+                            <span class="user-greeting fw-semibold text-white small">
+                                Hola @UserName!
+                            </span>
+                        </button>
                     }
-                </ul>
+                    else
+                    {
+                        <button class="btn btn-link p-0 border-0 text-decoration-none d-flex align-items-center user-menu-btn dropdown-toggle-no-caret" type="button" id="userMenu" data-bs-toggle="dropdown" aria-expanded="false">
+                            <div class="user-avatar rounded-circle d-flex align-items-center justify-content-center shadow-sm" style="width: 40px; height: 40px; font-size: 1rem; min-width: 40px; background: rgba(255,255,255,0.2); color: white;">
+                                 <i class="fa-regular fa-user"></i>
+                            </div>
+                            <span class="user-greeting fw-semibold text-white small">
+                                Mi cuenta
+                            </span>
+                        </button>
+                    }
+
+                    <ul class="dropdown-menu dropdown-menu-end shadow border-0 mt-2" aria-labelledby="userMenu">
+                        @foreach (var action in AccountLinks)
+                        {
+                            <li><a class="dropdown-item py-2" href="@action.Href">@action.Text</a></li>
+                        }
+                    </ul>
+                </div>
+                
+                <a href="/cart" class="btn btn-link text-white position-relative p-2 d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;">
+                    <i class="fa-solid fa-cart-shopping fa-lg"></i>
+                    @if (CartState.Count > 0)
+                    {
+                        <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger border border-light" style="font-size: 0.6rem;">
+                            @CartState.Count
+                            <span class="visually-hidden">items en carrito</span>
+                        </span>
+                    }
+                </a>
             </div>
-            
-            @* Optional: Keep Cart if needed, or hide if strictly single-booking *@
-            
-            <a href="/cart" class="btn btn-primary position-relative ms-2">
-                <i class="fa-solid fa-cart-shopping"></i>
-                @if (CartState.Count > 0)
-                {
-                    <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger">
-                        @CartState.Count
-                        <span class="visually-hidden">items en carrito</span>
-                    </span>
-                }
-            </a>
         </div>
-        <nav class="nav-menu mt-3">
-            <div class="nav nav-pills justify-content-center justify-content-lg-between flex-wrap gap-2">
+        
+        <nav class="nav-menu mt-2 pt-2 d-none d-lg-block" style="border-top: 1px solid rgba(255,255,255,0.2);">
+            <div class="nav justify-content-center gap-4">
                 @foreach (var link in NavLinks)
                 {
-                    <a class="nav-link" href="@link.Href">@link.Text</a>
+                    <a class="nav-link fw-medium px-2 py-1" href="@link.Href" style="font-size: 0.95rem; color: rgba(255,255,255,0.8);" onmouseover="this.style.color='white'" onmouseout="this.style.color='rgba(255,255,255,0.8)'">@link.Text</a>
                 }
             </div>
         </nav>
+        <!-- Mobile Nav Placeholder (could be a collapse) -->
+        <div class="d-lg-none mt-2 text-center">
+             <button class="btn btn-sm btn-outline-light w-100" type="button" data-bs-toggle="collapse" data-bs-target="#mobileMenu">
+                MENÚ <i class="fa-solid fa-bars ms-1"></i>
+            </button>
+             <div class="collapse mt-2" id="mobileMenu">
+                 <div class="d-flex flex-column gap-2">
+                    @foreach (var link in NavLinks)
+                    {
+                        <a class="btn btn-light btn-sm text-start" href="@link.Href">@link.Text</a>
+                    }
+                 </div>
+            </div>
+        </div>
     </div>
 </header>
 
@@ -119,6 +181,10 @@
 
     [Parameter, EditorRequired]
     public IReadOnlyList<MenuActionModel> AccountLinks { get; set; } = Array.Empty<MenuActionModel>();
+    
+    // User Params
+    [Parameter] public string UserName { get; set; } = string.Empty;
+    [Parameter] public string UserInitial { get; set; } = string.Empty;
 
     [Parameter, EditorRequired]
     public IReadOnlyList<NavLinkModel> NavLinks { get; set; } = Array.Empty<NavLinkModel>();
