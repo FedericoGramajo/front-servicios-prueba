@@ -63,7 +63,7 @@
                           Subtitle="Profesionales verificados"
                           Title="Conocé a quienes cuidan tu hogar"
                           CtaText="Sumate como profesional"
-                          ProfessionalsRoot="@RouteConstants.Professionals"
+                          CtaUrl="@($"{RouteConstants.Register}?role=Professional")"
                           Professionals="@Professionals"
                           TrustStats="@TrustStats" />
 
@@ -82,11 +82,6 @@
     private List<ServiceModel> Services { get; set; } = new();
     private List<ProfessionalModel> Professionals { get; set; } = new();
     private bool CategoriesLoading { get; set; } = true;
-
-    private readonly SearchConfig SearchBar = new("Buscar servicios hogareños en ServicioAhora!", "Buscar");
-
-    private readonly IReadOnlyList<MenuActionModel> AccountActions = MenuConstants.AccountActions;
-    private readonly IReadOnlyList<NavLinkModel> PrimaryNavLinks = MenuConstants.PrimaryNavLinks;
 
     private readonly IReadOnlyList<HeroCtaModel> HeroCtas = new List<HeroCtaModel>
     {
@@ -116,25 +111,6 @@
         new("Pagos seguros", "Protección al comprador")
     };
 
-    private readonly IReadOnlyList<string> FooterContact = new List<string>
-    {
-        "Tel: +54 11 5555 1111",
-        "Email: hola@servicioahora.com",
-        "Horario: Lunes a domingo 8 a 22 h"
-    };
-
-    private readonly IReadOnlyList<FooterGroupModel> FooterGroups = new List<FooterGroupModel>
-    {
-        new("Explorá más", new []
-        {
-            new FooterLinkModel("Servicios", RouteConstants.Search),
-            new FooterLinkModel("Profesionales", RouteConstants.Professionals),
-            new FooterLinkModel("Contacto", RouteConstants.Contact)
-        })
-    };
-
-    private int CurrentYear => DateTime.Now.Year;
-
     protected override async Task OnInitializedAsync()
     {
         CategoryStore.OnChange += StateHasChanged;
@@ -145,25 +121,10 @@
             await CategoryStore.LoadCategoriesAsync();
             FeaturedCategories = CategoryStore.Categories?.Where(c => c.IsFeatured).Take(6).ToList() ?? new List<GetCategory>();
 
-            // Load Real Services
-            var realServices = await ServiceOfferingService.GetAllAsync();
-            if (realServices != null)
-            {
-                var catIcons = CategoryStore.Categories?.ToDictionary(c => c.Id, c => c.Icon) ?? new Dictionary<Guid, string?>();
-                
-                Services = realServices.Where(s => s.Status).Take(6).Select(s => new ServiceModel(
-                    s.Id.ToString(), 
-                    s.Name, 
-                    s.Description ?? "", 
-                    s.CategoryName, 
-                    s.Image, 
-                    s.BasePrice,
-                    catIcons.TryGetValue(s.CategoryId, out var icon) ? icon : null
-                )).ToList();
-            }
-
             // Load Real Professionals
             var realProfessionals = await ProfessionalService.GetActiveProfessionalsAsync();
+            var activeProfessionalIds = realProfessionals?.Select(p => p.AppUserId).ToHashSet() ?? new HashSet<string>();
+
             if (realProfessionals != null)
             {
                 Professionals = realProfessionals.Take(6).Select(p => new ProfessionalModel(
@@ -171,10 +132,31 @@
                     p.FullName,
                     p.Categories.FirstOrDefault() ?? "Especialista",
                     "Ciudad", // Default city if not in model
-                    p.ProfileImage ?? "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=900&q=60",
+                    p.ProfileImage,
                     p.AvgRating,
                     p.BookingsCount
                 )).ToList();
+            }
+
+            // Load Real Services
+            var realServices = await ServiceOfferingService.GetAllAsync();
+            if (realServices != null)
+            {
+                var catIcons = CategoryStore.Categories?.ToDictionary(c => c.Id, c => c.Icon) ?? new Dictionary<Guid, string?>();
+                
+                // Filter by Service Status AND Professional IsActive (via activeProfessionalIds)
+                Services = realServices
+                    .Where(s => s.Status && activeProfessionalIds.Contains(s.ProfessionalId))
+                    .Take(6)
+                    .Select(s => new ServiceModel(
+                        s.Id.ToString(), 
+                        s.Name, 
+                        s.Description ?? "", 
+                        s.CategoryName, 
+                        s.Image, 
+                        s.BasePrice,
+                        catIcons.TryGetValue(s.CategoryId, out var icon) ? icon : null
+                    )).ToList();
             }
         }
         catch (Exception ex)

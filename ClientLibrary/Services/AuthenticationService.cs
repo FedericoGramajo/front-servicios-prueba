@@ -105,6 +105,22 @@ namespace ClientLibrary.Services
                 await apiHelper.GetServiceResponse<ServiceResponse>(result);
         }
 
+        public async Task<ServiceResponse> UpdateUser(UserUpdate user)
+        {
+            var client = await httpClient.GetPrivateClientAsync();
+            var apiCall = new ApiCall
+            {
+                Route = Constant.Authentication.Update,
+                Type = Constant.ApiCallType.Post,
+                Client = client,
+                Id = null!,
+                Model = user
+            };
+            var result = await apiHelper.ApiCallTypeCall<UserUpdate>(apiCall);
+            return result == null ? apiHelper.ConnectionError() :
+                await apiHelper.GetServiceResponse<ServiceResponse>(result);
+        }
+
         public async Task<UserDto> GetMyProfile()
         {
             var client = await httpClient.GetPrivateClientAsync();

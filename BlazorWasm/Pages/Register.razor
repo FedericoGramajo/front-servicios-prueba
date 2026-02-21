@@ -62,6 +62,26 @@
                                     <ValidationMessage For="@(() => User.ConfirmPassword)" class="text-danger small mt-1" />
                                 </div>
                                 <div class="col-12">
+                                    <label class="form-label fw-semibold">Foto de perfil</label>
+                                    <div class="d-flex align-items-center gap-3 mb-2">
+                                        <div class="profile-preview border rounded overflow-hidden bg-light d-flex align-items-center justify-content-center" style="width: 80px; height: 80px; min-width: 80px;">
+                                            @if (!string.IsNullOrEmpty(User.ProfileImage))
+                                            {
+                                                <img src="@User.ProfileImage" class="w-100 h-100 object-fit-cover" />
+                                            }
+                                            else
+                                            {
+                                                <i class="fa-solid fa-user fa-2x text-muted opacity-25"></i>
+                                            }
+                                        </div>
+                                        <div class="flex-grow-1">
+                                            <InputFile class="form-control" OnChange="OnProfileImageChange" accept="image/*" id="profileImage" />
+                                            <div class="form-text mt-1 small text-muted">Subí una foto clara de frente. Es obligatoria para tu perfil público.</div>
+                                        </div>
+                                    </div>
+                                    <ValidationMessage For="@(() => User.ProfileImage)" class="text-danger small mt-1" />
+                                </div>
+                                <div class="col-12">
                                     <label class="form-label fw-semibold" for="role">¿Cómo querés usar ServicioAhora?</label>
                                     <InputSelect class="form-select" id="role" @bind-Value="User.UserType">
                                         <option value="@UserType.Customer">Contratar servicios</option>
@@ -128,6 +148,41 @@
     private bool IsLoading { get; set; }
     private string? ErrorMessage { get; set; }
     private bool ShowManualErrors { get; set; }
+
+    private async Task OnProfileImageChange(InputFileChangeEventArgs e)
+    {
+        ErrorMessage = null;
+        var file = e.File;
+        if (file != null)
+        {
+            if (!file.ContentType.StartsWith("image/"))
+            {
+                ErrorMessage = "El archivo debe ser una imagen.";
+                return;
+            }
+
+            if (file.Size > 2 * 1024 * 1024)
+            {
+                ErrorMessage = "La imagen no debe superar los 2MB.";
+                return;
+            }
+
+            try 
+            {
+                // Resize to reasonable size for profile
+                var resizedFile = await file.RequestImageFileAsync(file.ContentType, 400, 400);
+                var buffer = new byte[resizedFile.Size];
+                await resizedFile.OpenReadStream(2 * 1024 * 1024).ReadAsync(buffer);
+                User.ProfileImage = $"data:{resizedFile.ContentType};base64,{Convert.ToBase64String(buffer)}";
+                StateHasChanged();
+            }
+            catch (Exception ex)
+            {
+                ErrorMessage = "Error al procesar la imagen. Intenta con otra.";
+                Console.WriteLine(ex.Message);
+            }
+        }
+    }
 
     private async Task HandleRegister(EditContext editContext)
     {

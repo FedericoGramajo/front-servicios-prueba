@@ -23,6 +23,7 @@ namespace ClientLibrary.Models.Authentication
         [Phone(ErrorMessage = "El formato del teléfono no es válido.")]
         public string? PhoneNumber { get; set; }
 
+        [Required(ErrorMessage = "La foto de perfil es obligatoria.")]
         public string? ProfileImage { get; set; }
         public required UserType UserType { get; set; }
     }

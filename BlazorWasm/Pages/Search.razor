@@ -9,7 +9,7 @@
 @using ClientLibrary.Specifications
 @inject IServOfferingService ServiceService
 @inject ICategoryService CategoryService
-
+@inject IProfessionalService ProfessionalService
 @inject NavigationManager Navigation
 
 <PageTitle>Buscar | ServicioAhora!</PageTitle>
@@ -254,8 +254,11 @@
         IsLoading = true;
         try
         {
+            var activeProfs = await ProfessionalService.GetActiveProfessionalsAsync();
+            var activeProfIds = activeProfs?.Select(p => p.AppUserId).ToHashSet() ?? new HashSet<string>();
+
             var allServices = await ServiceService.GetAllAsync();
-            AllResults = allServices.Where(s => s.Status).ToList();
+            AllResults = allServices.Where(s => s.Status && activeProfIds.Contains(s.ProfessionalId)).ToList();
             await ApplyFilters();
         }
         catch (Exception ex)

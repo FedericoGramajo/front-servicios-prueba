@@ -2,16 +2,27 @@
 @using System.Globalization
 @using System.Linq
 @using ClientLibrary.Helper
-@using ClientLibrary.Models.Landing
+@using ClientLibrary.Models.Authentication.Rol.Professional
+@using ClientLibrary.Models.ServicioAhora.ServOffering
+@using ClientLibrary.Services
 @inject NavigationManager Navigation
+@inject IProfessionalService ProfService
+@inject IServOfferingService ServiceService
 
 <PageTitle>Profesional - ServicioAhora!</PageTitle>
 
 <div class="landing-page">
 
-
     <main class="container py-5">
-        @if (Profile is null)
+        @if (isLoading)
+        {
+            <div class="d-flex justify-content-center py-5">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Cargando...</span>
+                </div>
+            </div>
+        }
+        else if (ProfessionalData is null)
         {
             <div class="alert alert-warning mt-4">No encontramos a este profesional. <a href="@RouteConstants.Search">Volver a buscar</a>.</div>
         }
@@ -20,81 +31,114 @@
             <div class="row g-4">
                 <div class="col-lg-4">
                     <div class="surface-card h-100 text-center">
-                        <div class="ratio ratio-1x1 mb-3 rounded overflow-hidden">
-                            <img src="@Profile.ImageUrl" alt="@Profile.Name" />
+                        <div class="ratio ratio-1x1 mb-3 rounded overflow-hidden shadow-sm bg-light">
+                            <div class="d-flex align-items-center justify-content-center" style="position: absolute; top: 0; left: 0; right: 0; bottom: 0;">
+                                @if (!string.IsNullOrEmpty(ProfessionalData.ProfileImage))
+                                {
+                                    <img src="@ProfessionalData.ProfileImage" alt="@ProfessionalData.FullName" class="w-100 h-100 object-fit-cover" />
+                                }
+                                else
+                                {
+                                    <i class="fa-solid fa-circle-user fa-8x text-muted opacity-25"></i>
+                                }
+                            </div>
                         </div>
-                        <h2 class="mb-1">@Profile.Name</h2>
-                        <p class="text-muted mb-1">@Profile.Specialty</p>
-                        <p class="small text-secondary text-uppercase">@Profile.City</p>
+                        <h2 class="mb-1">@ProfessionalData.FullName</h2>
+                        <p class="text-muted mb-1">@(string.Join(", ", ProfessionalData.Categories))</p>
+,ReplacementChunks:[{AllowMultiple:false,EndLine:46,ReplacementContent:
                         <div class="d-flex justify-content-center gap-3 my-3">
-                            <span class="pill"><i class="fa-solid fa-star text-warning me-1"></i>@Profile.Rating.ToString("0.0")</span>
-                            <span class="pill">@Profile.Projects proyectos</span>
+                            <span class="pill"><i class="fa-solid fa-star text-warning me-1"></i>@ProfessionalData.AvgRating.ToString("0.0")</span>
+                            <span class="pill">@ProfessionalData.BookingsCount proyectos</span>
                         </div>
-                        <p class="mb-3">@Profile.Bio</p>
-                        <div class="d-grid gap-2">
-                            <a class="btn btn-primary" href="#servicios">Ver servicios</a>
-                            <a class="btn btn-outline-primary" href="@RouteConstants.Home">Volver al inicio</a>
+                        
+                        @if (ProfessionalData.Licenses != null && ProfessionalData.Licenses.Any())
+                        {
+                            <div class="mb-3">
+                                <p class="small fw-bold text-muted text-uppercase mb-2">Matrículas / Licencias</p>
+                                <div class="d-flex flex-wrap gap-2 justify-content-center">
+                                    @foreach (var license in ProfessionalData.Licenses)
+                                    {
+                                        <span class="badge bg-light text-dark border">@license</span>
+                                    }
+                                </div>
+                            </div>
+                        }
+
+                        <div class="d-grid gap-2 mt-4">
+                            <a class="btn btn-primary" href="#servicios">Ver servicios (@ProfessionalData.ServicesCount)</a>
+                            <a class="btn btn-outline-primary" href="@RouteConstants.Professionals">Explorar profesionales</a>
                         </div>
                     </div>
                 </div>
                 <div class="col-lg-8">
                     <div class="surface-card h-100">
-                        <div class="section-heading flex-column flex-lg-row text-lg-start text-center">
+                        <div class="section-heading flex-column flex-lg-row text-lg-start text-center mb-4">
                             <div>
-                                <p class="text-uppercase text-muted small mb-1">Servicios ofrecidos</p>
-                                <h3 class="mb-0">Rubros y soluciones</h3>
+                                <p class="text-uppercase text-muted small mb-1">Catálogo de servicios</p>
+                                <h3 class="mb-0">Soluciones ofrecidas</h3>
                             </div>
                         </div>
-                        @foreach (var group in Profile.ServiceGroups)
+
+                        @if (ServicesByCategory == null || !ServicesByCategory.Any())
                         {
-                            <div class="service-group" id="servicios">
-                                <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-2">
-                                    <h5 class="mb-0">@group.Category</h5>
-                                    <span class="badge bg-primary-subtle text-primary">@group.Services.Count servicio(s)</span>
-                                </div>
-                                <div id="carousel-@group.Category.Replace(" ", "-").ToLower()" class="carousel slide" data-bs-ride="carousel" data-bs-interval="9000">
-                                    <div class="carousel-inner">
-                                        @foreach (var (slide, index) in group.Services.Chunk(6).Select((value, idx) => (value, idx)))
+                            <div class="text-center py-5">
+                                <i class="fa-solid fa-box-open fa-3x text-muted mb-3 opacity-25"></i>
+                                <p class="text-muted">Este profesional aún no ha publicado servicios.</p>
+                            </div>
+                        }
+                        else
+                        {
+                            @foreach (var group in ServicesByCategory)
+                            {
+                                <div class="service-group mb-5" id="servicios">
+                                    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
+                                        <h5 class="mb-0 fw-bold border-start border-4 border-primary ps-3">@group.Key</h5>
+                                        <span class="badge bg-primary-subtle text-primary">@group.Count() servicio(s)</span>
+                                    </div>
+                                    
+                                    <div class="row g-3">
+                                        @foreach (var service in group)
                                         {
-                                            <div class="carousel-item @(index == 0 ? "active" : string.Empty)">
-                                                <div class="row g-3">
-                                                    @foreach (var service in slide)
-                                                    {
-                                                        <div class="col-md-4">
-                                                            <div class="card professional-service-card h-100">
-                                                                <div class="card-body d-flex flex-column">
-                                                                    <div class="d-flex justify-content-between align-items-start mb-2">
-                                                                        <span class="badge rounded-pill bg-secondary-subtle text-secondary">@group.Category</span>
-                                                                        <span class="price-tag">@service.Price.ToString("C0", LocalCulture)</span>
-                                                                    </div>
-                                                                    <h6 class="fw-semibold">@service.Name</h6>
-                                                                    <p class="text-muted small flex-grow-1">@service.Description</p>
-                                                                    <button class="btn btn-outline-primary btn-sm mt-2" @onclick="() => GoToService(service.Slug)">Ver detalles</button>
+                                            <div class="col-md-6 col-xl-4">
+                                                <div class="card professional-service-card h-100 shadow-sm hover-elevate border-0 overflow-hidden">
+                                                    <div class="ratio ratio-16x9 bg-light border-bottom">
+                                                        <div class="d-flex align-items-center justify-content-center h-100 w-100">
+                                                            @if (!string.IsNullOrEmpty(service.Image))
+                                                            {
+                                                                <img src="@service.Image" alt="@service.Name" class="w-100 h-100 object-fit-cover" />
+                                                            }
+                                                            else
+                                                            {
+                                                                <div class="text-center opacity-25">
+                                                                    <i class="fa-solid fa-handshake-angle fa-2x mb-2"></i>
+                                                                    <p class="small mb-0">Servicio Disponible</p>
                                                                 </div>
-                                                            </div>
+                                                            }
                                                         </div>
-                                                    }
+                                                    </div>
+                                                    <div class="card-body d-flex flex-column p-3">
+                                                        <div class="d-flex justify-content-between align-items-start mb-2 gap-2">
+                                                            <span class="badge rounded-pill bg-light text-secondary text-truncate" style="max-width: 100px;">@group.Key</span>
+                                                            <span class="fw-bold text-primary text-nowrap">@service.BasePrice.ToString("C0", LocalCulture)</span>
+                                                        </div>
+                                                        <h6 class="fw-bold mb-2 text-dark line-clamp-2" style="min-height: 2.5rem;">@service.Name</h6>
+                                                        <p class="text-muted small flex-grow-1 mb-3 line-clamp-3">@service.Description</p>
+                                                        <button class="btn btn-outline-primary btn-sm mt-auto w-100 fw-semibold" @onclick="() => GoToService(service.Id.ToString())">
+                                                            <i class="fa-solid fa-magnifying-glass-plus me-2"></i>Ver detalles
+                                                        </button>
+                                                    </div>
                                                 </div>
                                             </div>
                                         }
                                     </div>
-                                    <button class="carousel-control-prev" type="button" data-bs-target="#carousel-@group.Category.Replace(" ", "-").ToLower()" data-bs-slide="prev">
-                                        <span class="carousel-control-prev-icon" aria-hidden="true"></span>
-                                        <span class="visually-hidden">Anterior</span>
-                                    </button>
-                                    <button class="carousel-control-next" type="button" data-bs-target="#carousel-@group.Category.Replace(" ", "-").ToLower()" data-bs-slide="next">
-                                        <span class="carousel-control-next-icon" aria-hidden="true"></span>
-                                        <span class="visually-hidden">Siguiente</span>
-                                    </button>
                                 </div>
-                            </div>
+                            }
                         }
                     </div>
                 </div>
             </div>
         }
     </main>
-
 
 </div>
 
@@ -104,187 +148,35 @@
 
     private static readonly CultureInfo LocalCulture = new("es-AR");
 
-    private readonly SearchConfig SearchBar = new("Buscar servicios hogareños en ServicioAhora!", "Buscar");
+    private GetProfessional? ProfessionalData;
+    private IEnumerable<IGrouping<string, GetServiceOffering>>? ServicesByCategory;
+    private bool isLoading = true;
 
-    private readonly IReadOnlyList<MenuActionModel> AccountActions = MenuConstants.AccountActions;
-    private readonly IReadOnlyList<NavLinkModel> PrimaryNavLinks = MenuConstants.PrimaryNavLinks;
-
-    private readonly IReadOnlyList<string> FooterContact = new List<string>
+    protected override async Task OnParametersSetAsync()
     {
-        "Tel: +54 11 5555 1111",
-        "Email: hola@servicioahora.com",
-        "Horario: Lunes a domingo 8 a 22 h"
-    };
-
-    private readonly IReadOnlyList<FooterGroupModel> FooterGroups = new List<FooterGroupModel>
-    {
-        new("Explorá más", new []
+        isLoading = true;
+        try 
         {
-            new FooterLinkModel("Servicios", RouteConstants.HashServices),
-            new FooterLinkModel("Profesionales", RouteConstants.Professionals),
-            new FooterLinkModel("Garantías", RouteConstants.HashGarantias)
-        })
-    };
-
-    private ProfessionalProfile? Profile;
-
-    protected override void OnParametersSet()
-    {
-        Profiles.TryGetValue(Slug, out Profile);
+            if (!string.IsNullOrEmpty(Slug))
+            {
+                // In our current routes, Slug is the AppUserId
+                ProfessionalData = await ProfService.GetByIdAsync(Slug);
+                if (ProfessionalData != null)
+                {
+                    var services = await ServiceService.GetByProfessionalAsync(Slug);
+                    ServicesByCategory = services.GroupBy(s => s.CategoryName);
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading professional profile: {ex.Message}");
+        }
+        finally
+        {
+            isLoading = false;
+        }
     }
 
-    private void GoToService(string slug) => Navigation.NavigateTo(RouteConstants.Create(RouteConstants.ServiceDetail, slug));
-
-    private static readonly IReadOnlyDictionary<string, ProfessionalProfile> Profiles = new Dictionary<string, ProfessionalProfile>
-    {
-        ["laura-fernandez"] = new(
-            "laura-fernandez",
-            "Laura Fernández",
-            "Especialista en organización y limpieza",
-            "Buenos Aires",
-            "https://images.unsplash.com/photo-1544723795-3fb6469f5b39?auto=format&fit=crop&w=900&q=60",
-            4.9,
-            128,
-            "Me enfoco en limpiezas profundas con protocolos seguros para familias y mascotas.",
-            new List<ServiceCategoryGroup>
-            {
-                new("Limpieza y orden", new()
-                {
-                    new("limpieza-profunda-integral", "Limpieza profunda integral", 32000, "Equipos especializados para dejar tu casa impecable en horas."),
-                    new("plomeria-express", "Plomería express", 36000, "Resolución de fugas, destapaciones y cambio de griferías en el día."),
-                    new("reparacion-electrica-segura", "Reparación eléctrica segura", 45000, "Diagnóstico y solución de instalaciones, tableros y luminarias."),
-                    new("asistencia-para-electrodomesticos", "Asistencia para electrodomésticos", 40000, "Servicio técnico para heladeras, lavarropas y climatización."),
-                    new("mantenimiento-de-jardines", "Mantenimiento de jardines", 28000, "Corte, fertilización y diseño sustentable para tus espacios verdes."),
-                    new("pintura-y-retoques", "Pintura y retoques", 52000, "Renová ambientes con combinaciones modernas y materiales lavables.")
-                })
-            }
-        ),
-        ["mateo-alvarez"] = new(
-            "mateo-alvarez",
-            "Mateo Álvarez",
-            "Electricista matriculado",
-            "Córdoba",
-            "https://images.unsplash.com/photo-1524504388940-b1c1722653e1?auto=format&fit=crop&w=900&q=60",
-            4.8,
-            96,
-            "Instalaciones seguras y ordenadas para que cada equipo funcione a la primera.",
-            new List<ServiceCategoryGroup>
-            {
-                new("Electricidad", new()
-                {
-                    new("reparacion-electrica-segura", "Reparación eléctrica segura", 45000, "Diagnóstico y solución de instalaciones, tableros y luminarias."),
-                    new("asistencia-para-electrodomesticos", "Asistencia para electrodomésticos", 40000, "Servicio técnico para heladeras, lavarropas y climatización."),
-                    new("plomeria-express", "Plomería express", 36000, "Resolución de fugas, destapaciones y cambio de griferías en el día."),
-                    new("pintura-y-retoques", "Pintura y retoques", 52000, "Renová ambientes con combinaciones modernas y materiales lavables."),
-                    new("limpieza-profunda-integral", "Limpieza profunda integral", 32000, "Equipos especializados para dejar tu casa impecable en horas."),
-                    new("mantenimiento-de-jardines", "Mantenimiento de jardines", 28000, "Corte, fertilización y diseño sustentable para tus espacios verdes.")
-                })
-            }
-        ),
-        ["valentina-castro"] = new(
-            "valentina-castro",
-            "Valentina Castro",
-            "Paisajista y jardinera",
-            "Rosario",
-            "https://images.unsplash.com/photo-1521572267360-ee0c2909d518?auto=format&fit=crop&w=900&q=60",
-            5.0,
-            142,
-            "Diseño espacios verdes con foco en sustentabilidad y bajo mantenimiento.",
-            new List<ServiceCategoryGroup>
-            {
-                new("Jardinería", new()
-                {
-                    new("mantenimiento-de-jardines", "Mantenimiento de jardines", 28000, "Corte, fertilización y diseño sustentable para tus espacios verdes."),
-                    new("pintura-y-retoques", "Pintura y retoques", 52000, "Renová ambientes con combinaciones modernas y materiales lavables."),
-                    new("limpieza-profunda-integral", "Limpieza profunda integral", 32000, "Equipos especializados para dejar tu casa impecable en horas."),
-                    new("reparacion-electrica-segura", "Reparación eléctrica segura", 45000, "Diagnóstico y solución de instalaciones, tableros y luminarias."),
-                    new("plomeria-express", "Plomería express", 36000, "Resolución de fugas, destapaciones y cambio de griferías en el día."),
-                    new("asistencia-para-electrodomesticos", "Asistencia para electrodomésticos", 40000, "Servicio técnico para heladeras, lavarropas y climatización.")
-                })
-            }
-        ),
-        ["jeremias-luna"] = new(
-            "jeremias-luna",
-            "Jeremías Luna",
-            "Plomero certificado",
-            "Mendoza",
-            "https://images.unsplash.com/photo-1544723795-432537f4aa73?auto=format&fit=crop&w=900&q=60",
-            4.7,
-            88,
-            "Soluciono fugas y renovaciones de agua fría/caliente con mínimo impacto en tu hogar.",
-            new List<ServiceCategoryGroup>
-            {
-                new("Plomería", new()
-                {
-                    new("plomeria-express", "Plomería express", 36000, "Resolución de fugas, destapaciones y cambio de griferías en el día."),
-                    new("reparacion-electrica-segura", "Reparación eléctrica segura", 45000, "Diagnóstico y solución de instalaciones, tableros y luminarias."),
-                    new("asistencia-para-electrodomesticos", "Asistencia para electrodomésticos", 40000, "Servicio técnico para heladeras, lavarropas y climatización."),
-                    new("mantenimiento-de-jardines", "Mantenimiento de jardines", 28000, "Corte, fertilización y diseño sustentable para tus espacios verdes."),
-                    new("pintura-y-retoques", "Pintura y retoques", 52000, "Renová ambientes con combinaciones modernas y materiales lavables."),
-                    new("limpieza-profunda-integral", "Limpieza profunda integral", 32000, "Equipos especializados para dejar tu casa impecable en horas.")
-                })
-            }
-        ),
-        ["marina-quiroga"] = new(
-            "marina-quiroga",
-            "Marina Quiroga",
-            "Pintora y decoradora",
-            "La Plata",
-            "https://images.unsplash.com/photo-1488426862026-3ee34a7d66df?auto=format&fit=crop&w=900&q=60",
-            4.9,
-            77,
-            "Interiores cálidos con terminaciones prolijas y asesoría de color personalizada.",
-            new List<ServiceCategoryGroup>
-            {
-                new("Decoración", new()
-                {
-                    new("pintura-y-retoques", "Pintura y retoques", 52000, "Renová ambientes con combinaciones modernas y materiales lavables."),
-                    new("limpieza-profunda-integral", "Limpieza profunda integral", 32000, "Equipos especializados para dejar tu casa impecable en horas."),
-                    new("mantenimiento-de-jardines", "Mantenimiento de jardines", 28000, "Corte, fertilización y diseño sustentable para tus espacios verdes."),
-                    new("reparacion-electrica-segura", "Reparación eléctrica segura", 45000, "Diagnóstico y solución de instalaciones, tableros y luminarias."),
-                    new("asistencia-para-electrodomesticos", "Asistencia para electrodomésticos", 40000, "Servicio técnico para heladeras, lavarropas y climatización."),
-                    new("plomeria-express", "Plomería express", 36000, "Resolución de fugas, destapaciones y cambio de griferías en el día.")
-                })
-            }
-        ),
-        ["andres-rivas"] = new(
-            "andres-rivas",
-            "Andrés Rivas",
-            "Técnico de electrodomésticos",
-            "Neuquén",
-            "https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=900&q=60",
-            4.8,
-            109,
-            "Diagnóstico técnico y reparaciones que priorizan repuestos originales y garantías.",
-            new List<ServiceCategoryGroup>
-            {
-                new("Electrodomésticos", new()
-                {
-                    new("asistencia-para-electrodomesticos", "Asistencia para electrodomésticos", 40000, "Servicio técnico para heladeras, lavarropas y climatización."),
-                    new("reparacion-electrica-segura", "Reparación eléctrica segura", 45000, "Diagnóstico y solución de instalaciones, tableros y luminarias."),
-                    new("plomeria-express", "Plomería express", 36000, "Resolución de fugas, destapaciones y cambio de griferías en el día."),
-                    new("limpieza-profunda-integral", "Limpieza profunda integral", 32000, "Equipos especializados para dejar tu casa impecable en horas."),
-                    new("pintura-y-retoques", "Pintura y retoques", 52000, "Renová ambientes con combinaciones modernas y materiales lavables."),
-                    new("mantenimiento-de-jardines", "Mantenimiento de jardines", 28000, "Corte, fertilización y diseño sustentable para tus espacios verdes.")
-                })
-            }
-        )
-    };
-
-    private int CurrentYear => DateTime.Now.Year;
-
-    private record ProfessionalProfile(
-        string Slug,
-        string Name,
-        string Specialty,
-        string City,
-        string ImageUrl,
-        double Rating,
-        int Projects,
-        string Bio,
-        IReadOnlyList<ServiceCategoryGroup> ServiceGroups);
-
-    private record ServiceCategoryGroup(string Category, List<ServiceSummary> Services);
-
-    private record ServiceSummary(string Slug, string Name, decimal Price, string Description);
+    private void GoToService(string id) => Navigation.NavigateTo(RouteConstants.Create(RouteConstants.ServiceDetail, id));
 }

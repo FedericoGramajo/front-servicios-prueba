@@ -1,19 +1,19 @@
 @attribute [Route(RouteConstants.ClientDashboard)]
-@attribute [Authorize]
+@attribute [Authorize(Roles = Constant.Administration.CustomerRole)]
 @using ClientLibrary.Models.Landing
 @using BlazorWasm.Shared.Client
 @using ClientLibrary.Services
 @inject IUserProfileService UserProfileService
 @inject IServiceHistoryService ServiceHistoryService
 
-<PageTitle>Mi Panel - ServicioAhora!</PageTitle>
+<PageTitle>Mi Actividad - ServicioAhora!</PageTitle>
 
 <div class="landing-page">
     <main class="container py-5 account-layout">
         <!-- Header -->
         <div class="section-heading flex-column flex-lg-row mb-4">
             <div>
-                <p class="text-uppercase text-muted small mb-1">Panel de Cliente</p>
+                <p class="text-uppercase text-muted small mb-1">Mi Actividad</p>
                 <h2 class="mb-0">Hola, @(string.IsNullOrEmpty(UserProfile.FullName) ? "Usuario" : UserProfile.FullName.Split(' ')[0])!</h2>
             </div>
             <div class="d-flex gap-2">
@@ -22,7 +22,8 @@
         </div>
 
         <!-- Metrics -->
-        <ClientMetrics UpcomingCount="@UpcomingCount" 
+        <ClientMetrics TotalInvested="@TotalInvested"
+                       UpcomingCount="@UpcomingCount" 
                        InProgressCount="@InProgressCount" 
                        CompletedCount="@CompletedCount" />
 
@@ -30,12 +31,7 @@
         <ul class="nav nav-tabs mb-4">
             <li class="nav-item">
                 <button class="nav-link @(ActiveTab == "history" ? "active fw-bold" : "")" @onclick='() => ActiveTab = "history"'>
-                    <i class="fa-solid fa-clock-rotate-left me-2"></i>Historial de Servicios
-                </button>
-            </li>
-            <li class="nav-item">
-                <button class="nav-link @(ActiveTab == "profile" ? "active fw-bold" : "")" @onclick='() => ActiveTab = "profile"'>
-                    <i class="fa-solid fa-user-gear me-2"></i>Mi Perfil
+                    <i class="fa-solid fa-chart-line me-2"></i>Mi Actividad
                 </button>
             </li>
         </ul>
@@ -45,10 +41,7 @@
         {
             <ClientServiceHistory History="History" />
         }
-        else if (ActiveTab == "profile")
-        {
-            <ClientProfile UserProfile="UserProfile" />
-        }
+
 
     </main>
 </div>
@@ -61,9 +54,10 @@
     private List<ServiceHistoryItem> History { get; set; } = new();
 
     // Metrics Calculation
-    private int UpcomingCount => History.Count(h => h.Date >= DateTime.Today && h.Status != "completado");
-    private int InProgressCount => History.Count(h => h.Status == "en-progreso");
-    private int CompletedCount => History.Count(h => h.Status == "completado");
+    private decimal TotalInvested => History.Where(h => h.Status.Equals("completado", StringComparison.OrdinalIgnoreCase)).Sum(h => h.Total);
+    private int UpcomingCount => History.Count(h => h.Date >= DateTime.Today && !h.Status.Equals("completado", StringComparison.OrdinalIgnoreCase));
+    private int InProgressCount => History.Count(h => h.Status.Equals("en-progreso", StringComparison.OrdinalIgnoreCase));
+    private int CompletedCount => History.Count(h => h.Status.Equals("completado", StringComparison.OrdinalIgnoreCase));
 
 
     [Parameter]
@@ -83,14 +77,12 @@
     {
         try 
         {
-            // Initializing tasks to run in parallel where possible, but here simple sequence is fine
             UserProfile = await UserProfileService.GetProfileAsync() ?? new();
             History = await ServiceHistoryService.GetHistoryAsync() ?? new();
         } 
         catch (Exception ex)
         {
             Console.WriteLine($"Error loading dashboard data: {ex.Message}");
-            // Optional: Show toast error
         }
     }
 }

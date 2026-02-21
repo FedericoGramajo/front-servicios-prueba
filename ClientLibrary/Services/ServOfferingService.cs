@@ -25,7 +25,7 @@ namespace ClientLibrary.Services
             var client = await httpClient.GetPrivateClientAsync();
             var apiCall = new ApiCall
             {
-                Route = Constant.Product.Delete,
+                Route = Constant.ServiceOffering.Delete,
                 Type = Constant.ApiCallType.Delete,
                 Client = client,
                 Model = null!
@@ -74,7 +74,7 @@ namespace ClientLibrary.Services
             var client = httpClient.GetPublicClient();
             var apiCall = new ApiCall
             {
-                Route = Constant.Product.Get,
+                Route = Constant.ServiceOffering.Get,
                 Type = Constant.ApiCallType.Get,
                 Client = client,
                 Model = null!
@@ -100,6 +100,24 @@ namespace ClientLibrary.Services
                 s.Name.Contains(query, StringComparison.OrdinalIgnoreCase) || 
                 (s.Description != null && s.Description.Contains(query, StringComparison.OrdinalIgnoreCase))
             );
+        }
+
+        public async Task<IEnumerable<GetServiceOffering>> GetByProfessionalAsync(string professionalId)
+        {
+            var client = httpClient.GetPublicClient();
+            var apiCall = new ApiCall
+            {
+                Route = Constant.ServiceOffering.GetByProfessional,
+                Type = Constant.ApiCallType.Get,
+                Client = client
+            };
+            apiCall.ToString(professionalId);
+            var result = await apiHelper.ApiCallTypeCall<Dummy>(apiCall);
+
+            if (result.IsSuccessStatusCode)
+                return await apiHelper.GetServiceResponse<IEnumerable<GetServiceOffering>>(result);
+            else
+                return [];
         }
     }
 }

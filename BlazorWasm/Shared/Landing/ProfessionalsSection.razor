@@ -12,7 +12,7 @@
                     <p class="text-uppercase text-muted small mb-1">@Subtitle</p>
                     <h2>@Title</h2>
                 </div>
-                <button class="btn btn-link text-decoration-none" @onclick="() => Navigation.NavigateTo(ProfessionalsRoot)">@CtaText <i class="@CtaIconClass ms-1"></i></button>
+                <button class="btn btn-link text-decoration-none" @onclick="() => Navigation.NavigateTo(CtaUrl)">@CtaText <i class="@CtaIconClass ms-1"></i></button>
             </div>
 
             <div id="@CarouselId" class="carousel slide" data-bs-ride="carousel" data-bs-interval="9000">
@@ -25,16 +25,18 @@
                                 {
                                     <div class="col-md-4">
                                         <div class="card professional-card h-100 overflow-hidden">
-                                            @if (!string.IsNullOrEmpty(professional.ImageUrl))
-                                            {
-                                                <img src="@professional.ImageUrl" class="card-img-top" alt="Foto de @professional.Name" loading="lazy" style="height: 250px; object-fit: cover;" />
-                                            }
-                                            else
-                                            {
-                                                <div class="card-img-top d-flex align-items-center justify-content-center bg-light" style="height: 250px;">
-                                                    <i class="fa-solid fa-circle-user fa-6x text-muted opacity-50"></i>
+                                            <div class="ratio ratio-4x3 bg-light border-bottom">
+                                                <div class="d-flex align-items-center justify-content-center" style="position: absolute; top: 0; left: 0; right: 0; bottom: 0;">
+                                                    @if (!string.IsNullOrEmpty(professional.ImageUrl))
+                                                    {
+                                                        <img src="@professional.ImageUrl" class="w-100 h-100 object-fit-cover" alt="Foto de @professional.Name" loading="lazy" />
+                                                    }
+                                                    else
+                                                    {
+                                                        <i class="fa-solid fa-circle-user fa-6x text-muted opacity-25"></i>
+                                                    }
                                                 </div>
-                                            }
+                                            </div>
                                             <div class="card-body">
                                                 <div class="d-flex align-items-center justify-content-between mb-2">
                                                     <h5 class="mb-0">@professional.Name</h5>
@@ -108,7 +110,7 @@
     public IReadOnlyList<TrustStatModel> TrustStats { get; set; } = Array.Empty<TrustStatModel>();
 
     [Parameter]
-    public string ProfessionalsRoot { get; set; } = RouteConstants.Professionals;
+    public string CtaUrl { get; set; } = RouteConstants.Professionals;
 
     private IEnumerable<ProfessionalModel[]> Slides => Professionals.Chunk(3);
 

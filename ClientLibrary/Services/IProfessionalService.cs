@@ -6,5 +6,6 @@ namespace ClientLibrary.Services
     public interface IProfessionalService
     {
         Task<List<GetProfessional>> GetActiveProfessionalsAsync();
+        Task<GetProfessional> GetByIdAsync(string id);
     }
 }

@@ -25,15 +25,18 @@
             <div class="row g-4 align-items-start">
                 <div class="col-lg-7">
                     <div class="surface-card h-100">
-                        <div class="d-flex flex-wrap gap-2 align-items-center mb-3">
+                        <div class="d-flex flex-wrap gap-2 align-items-center mb-1">
                             <span class="badge bg-primary-subtle text-primary">@Service.CategoryName</span>
                         </div>
-                        <h1 class="mb-2">@Service.Name</h1>
-                        <p class="text-muted mb-3">@Service.Description</p>
+                        <p class="text-primary fw-bold mb-1">@Service.ProfessionalFullName</p>
+                        <h1 class="mb-3">@Service.Name</h1>
+                        <p class="text-muted mb-4 lead">@Service.Description</p>
                         <div class="d-flex flex-wrap gap-3 mb-4">
-                            @if (Service.EstimatedDuration.HasValue)
+                            @if (Service.EstimatedDuration > 0)
                             {
-                                <div class="pill">@Service.EstimatedDuration horas aprox.</div>
+                                <div class="pill">
+                                    <i class="fa-regular fa-clock me-2"></i>@Service.EstimatedDuration horas aprox.
+                                </div>
                             }
                         </div>
                         <div class="row g-3">
@@ -116,8 +119,8 @@
                         <p class="text-muted small mb-3">Duración estimada: @(Service?.EstimatedDuration) horas</p>
                         
                         <!-- Calendar Component -->
-                        <TimeSlotPicker ProfessionalId="mock-prof-1" 
-                                       DurationMinutes="120" 
+                        <TimeSlotPicker ProfessionalId="@Service.ProfessionalId.ToString()" 
+                                       DurationMinutes="@((int)(Service.EstimatedDuration * 60))" 
                                        OnSlotSelected="OnTimeSlotSelected" />
                         
                         @if (SelectedAppointmentTime.HasValue)

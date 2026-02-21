@@ -55,16 +55,18 @@
                                 <div class="card professional-result shadow-sm border-0">
                                     <div class="row g-0 align-items-center">
                                         <div class="col-12 col-md-3">
-                                            <div class="ratio ratio-1x1 m-3 rounded shadow-sm overflow-hidden d-flex align-items-center justify-content-center bg-light" style="max-width: 150px;">
-                                                @if (!string.IsNullOrEmpty(professional.ProfileImage))
-                                                {
-                                                    <img src="@professional.ProfileImage" 
-                                                         alt="@professional.FullName" class="img-fluid object-fit-cover" />
-                                                }
-                                                else
-                                                {
-                                                    <i class="fa-solid fa-circle-user fa-5x text-muted opacity-50"></i>
-                                                }
+                                            <div class="ratio ratio-1x1 m-3 rounded shadow-sm overflow-hidden bg-light" style="max-width: 150px;">
+                                                <div class="d-flex align-items-center justify-content-center" style="position: absolute; top: 0; left: 0; right: 0; bottom: 0;">
+                                                    @if (!string.IsNullOrEmpty(professional.ProfileImage))
+                                                    {
+                                                        <img src="@professional.ProfileImage" 
+                                                             alt="@professional.FullName" class="img-fluid h-100 w-100 object-fit-cover" />
+                                                    }
+                                                    else
+                                                    {
+                                                        <i class="fa-solid fa-circle-user fa-5x text-muted opacity-50"></i>
+                                                    }
+                                                </div>
                                             </div>
                                         </div>
                                         <div class="col-12 col-md-6">

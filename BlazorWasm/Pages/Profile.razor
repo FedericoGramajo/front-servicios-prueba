@@ -2,11 +2,11 @@
 @using System.Collections.Generic
 @using ClientLibrary.Services
 @using ClientLibrary.Models.Authentication
+@inject IJSRuntime JS
 
 <PageTitle>Mi perfil - ServicioAhora!</PageTitle>
 
 <div class="landing-page">
-
 
     <main class="container py-5 account-layout">
         <div class="d-flex flex-column gap-4">
@@ -17,8 +17,9 @@
                         <h2 class="mb-0">Gestioná tu perfil</h2>
                     </div>
                     <div class="d-flex gap-2">
-                        <button class="btn btn-outline-primary">Cancelar</button>
-                        <button class="btn btn-primary">Guardar cambios</button>
+                        <button class="btn btn-primary" @onclick="OpenUpdateModal">
+                            <i class="fa-solid fa-user-pen me-2"></i>Editar Perfil
+                        </button>
                     </div>
                 </div>
 
@@ -27,9 +28,9 @@
                     <div class="col-12 mb-3">
                         <div class="d-flex align-items-center gap-3">
                             <div class="position-relative" style="width: 100px; height: 100px;">
-                                @if (!string.IsNullOrEmpty(ProfileImageDataUrl))
+                                @if (!string.IsNullOrEmpty(UserProfile.ProfileImage))
                                 {
-                                    <img src="@ProfileImageDataUrl" class="rounded-circle w-100 h-100 object-fit-cover border" alt="Foto de perfil" />
+                                    <img src="@UserProfile.ProfileImage" class="rounded-circle w-100 h-100 object-fit-cover border" alt="Foto de perfil" />
                                 }
                                 else
                                 {
@@ -37,29 +38,25 @@
                                         <i class="fa-regular fa-user fa-3x text-muted"></i>
                                     </div>
                                 }
-                                <label for="profileUpload" class="position-absolute bottom-0 end-0 btn btn-sm btn-primary rounded-circle p-1 d-flex align-items-center justify-content-center" style="width: 32px; height: 32px; cursor: pointer;">
-                                    <i class="fa-solid fa-camera fa-xs"></i>
-                                </label>
-                                <InputFile OnChange="OnInputFileChange" id="profileUpload" class="d-none" accept=".jpg, .jpeg, .png" />
                             </div>
                             <div>
                                 <h5 class="mb-1">Foto de perfil</h5>
-                                <p class="text-muted small mb-0">Recomendado: 300x300px, JPG o PNG.</p>
+                                <p class="text-muted small mb-0">Esta es tu imagen actual registrada.</p>
                             </div>
                         </div>
                     </div>
 
                     <div class="col-md-6">
                         <label class="form-label fw-semibold">Nombre completo</label>
-                        <input class="form-control" placeholder="Tu nombre" @bind="UserProfile.FullName" />
+                        <div class="form-control bg-light">@UserProfile.FullName</div>
                     </div>
                     <div class="col-md-6">
                         <label class="form-label fw-semibold">Correo electrónico</label>
-                        <input class="form-control" type="email" placeholder="correo@ejemplo.com" @bind="UserProfile.Email" readonly />
+                        <div class="form-control bg-light">@UserProfile.Email</div>
                     </div>
                     <div class="col-md-6">
                         <label class="form-label fw-semibold">Teléfono</label>
-                        <input class="form-control" type="tel" placeholder="11 4444 9999" @bind="UserProfile.PhoneNumber" />
+                        <div class="form-control bg-light">@(string.IsNullOrEmpty(UserProfile.PhoneNumber) ? "-" : UserProfile.PhoneNumber)</div>
                     </div>
                     
                     <div class="col-12 mt-4">
@@ -91,40 +88,99 @@
         </div>
     </main>
 
-    @if (showAddressModal)
+    <!-- Modal para Editar Perfil -->
+    @if (showUpdateModal)
     {
         <div class="modal fade show d-block" tabindex="-1" style="background-color: rgba(0,0,0,0.5);">
             <div class="modal-dialog modal-dialog-centered">
-                <div class="modal-content">
-                    <div class="modal-header">
-                        <h5 class="modal-title">Nueva dirección</h5>
-                        <button type="button" class="btn-close" @onclick="CloseAddressModal"></button>
+                <div class="modal-content border-0 shadow-lg">
+                    <div class="modal-header bg-light">
+                        <h5 class="modal-title fw-bold text-primary">Actualizar Perfil</h5>
+                        <button type="button" class="btn-close" @onclick="CloseUpdateModal"></button>
                     </div>
-                    <div class="modal-body">
+                    <div class="modal-body p-4">
+                        <div class="text-center mb-4">
+                            <div class="position-relative d-inline-block" style="width: 120px; height: 120px;">
+                                @if (!string.IsNullOrEmpty(EditModel.ProfileImage))
+                                {
+                                    <img src="@EditModel.ProfileImage" class="rounded-circle w-100 h-100 object-fit-cover border shadow-sm" alt="Preview" />
+                                }
+                                else
+                                {
+                                    <div class="rounded-circle w-100 h-100 bg-light d-flex align-items-center justify-content-center border shadow-sm">
+                                        <i class="fa-regular fa-user fa-3x text-muted"></i>
+                                    </div>
+                                }
+                                <label for="profileUploadEdit" class="position-absolute bottom-0 end-0 btn btn-primary rounded-circle p-0 d-flex align-items-center justify-content-center border-white border-2" style="width: 36px; height: 36px; cursor: pointer;">
+                                    <i class="fa-solid fa-camera fa-sm"></i>
+                                </label>
+                                <InputFile OnChange="OnInputFileChange" id="profileUploadEdit" class="d-none" accept=".jpg, .jpeg, .png" />
+                            </div>
+                            <p class="text-muted small mt-2">Personalizá tu imagen</p>
+                        </div>
+
                         <div class="mb-3">
-                            <label class="form-label">Calle y número</label>
-                            <input type="text" class="form-control" @bind="newAddress.Street" placeholder="Ej. Av. Libertador 1234" />
+                            <label class="form-label fw-semibold">Nombre completo</label>
+                            <input type="text" class="form-control" @bind="EditModel.FullName" placeholder="Tu nombre" />
                         </div>
                         <div class="mb-3">
-                            <label class="form-label">Ciudad</label>
-                            <input type="text" class="form-control" @bind="newAddress.City" placeholder="Ej. Buenos Aires" />
-                        </div>
-                        <div class="form-check">
-                            <input class="form-check-input" type="checkbox" @bind="newAddress.IsPrimary" id="isPrimaryCheck">
-                            <label class="form-check-label" for="isPrimaryCheck">
-                                Establecer como principal
-                            </label>
+                            <label class="form-label fw-semibold">Teléfono</label>
+                            <input type="tel" class="form-control" @bind="EditModel.PhoneNumber" placeholder="11 4444 9999" />
                         </div>
                     </div>
-                    <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary" @onclick="CloseAddressModal">Cancelar</button>
-                        <button type="button" class="btn btn-primary" @onclick="SaveAddress">Guardar</button>
+                    <div class="modal-footer bg-light">
+                        <button type="button" class="btn btn-secondary px-4" @onclick="CloseUpdateModal">Cancelar</button>
+                        <button type="button" class="btn btn-primary px-4" @onclick="UpdateProfile" disabled="@isSubmitting">
+                            @if (isSubmitting)
+                            {
+                                <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                                <span>Guardando...</span>
+                            }
+                            else
+                            {
+                                <span>Guardar cambios</span>
+                            }
+                        </button>
                     </div>
                 </div>
             </div>
         </div>
     }
 
+    <!-- Modal para Nueva Dirección -->
+    @if (showAddressModal)
+    {
+        <div class="modal fade show d-block" tabindex="-1" style="background-color: rgba(0,0,0,0.5);">
+            <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content border-0 shadow-lg">
+                    <div class="modal-header bg-light text-primary">
+                        <h5 class="modal-title fw-bold">Nueva dirección</h5>
+                        <button type="button" class="btn-close" @onclick="CloseAddressModal"></button>
+                    </div>
+                    <div class="modal-body p-4">
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold">Calle y número</label>
+                            <input type="text" class="form-control" @bind="newAddress.Street" placeholder="Ej. Av. Libertador 1234" />
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold">Ciudad</label>
+                            <input type="text" class="form-control" @bind="newAddress.City" placeholder="Ej. Buenos Aires" />
+                        </div>
+                        <div class="form-check form-switch mt-3">
+                            <input class="form-check-input" type="checkbox" @bind="newAddress.IsPrimary" id="isPrimaryCheck">
+                            <label class="form-check-label" for="isPrimaryCheck">
+                                Establecer como principal
+                            </label>
+                        </div>
+                    </div>
+                    <div class="modal-footer bg-light">
+                        <button type="button" class="btn btn-secondary px-4" @onclick="CloseAddressModal">Cancelar</button>
+                        <button type="button" class="btn btn-primary px-4" @onclick="SaveAddress">Guardar</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
 
 </div>
 
@@ -133,37 +189,71 @@
     private IAuthenticationService AuthenticationService { get; set; } = default!;
 
     private UserDto UserProfile { get; set; } = new();
+    private UserUpdate EditModel { get; set; } = new();
+
+    private bool showUpdateModal = false;
+    private bool isSubmitting = false;
 
     protected override async Task OnInitializedAsync()
     {
-        UserProfile = await AuthenticationService.GetMyProfile();
-        if (!string.IsNullOrEmpty(UserProfile.ProfileImage))
-        {
-            ProfileImageDataUrl = UserProfile.ProfileImage;
-        }
+        await LoadProfile();
     }
 
-    private readonly SearchConfig SearchBar = new("Buscar servicios hogareños en ServicioAhora!", "Buscar");
-
-    private readonly IReadOnlyList<MenuActionModel> AccountActions = MenuConstants.AccountActions;
-    private readonly IReadOnlyList<NavLinkModel> PrimaryNavLinks = MenuConstants.PrimaryNavLinks;
-
-    private readonly IReadOnlyList<string> FooterContact = new List<string>
+    private async Task LoadProfile()
     {
-        "Tel: +54 11 5555 1111",
-        "Email: hola@servicioahora.com",
-        "Horario: Lunes a domingo 8 a 22 h"
-    };
+        UserProfile = await AuthenticationService.GetMyProfile();
+    }
 
-    private readonly IReadOnlyList<FooterGroupModel> FooterGroups = new List<FooterGroupModel>
+    private void OpenUpdateModal()
     {
-        new("Explorá más", new []
+        EditModel = new UserUpdate
         {
-            new FooterLinkModel("Servicios", RouteConstants.HashServices),
-            new FooterLinkModel("Profesionales", RouteConstants.Professionals),
-            new FooterLinkModel("Garantías", RouteConstants.HashGarantias)
-        })
-    };
+            Id = UserProfile.Id,
+            FullName = UserProfile.FullName,
+            PhoneNumber = UserProfile.PhoneNumber ?? "",
+            ProfileImage = UserProfile.ProfileImage
+        };
+        showUpdateModal = true;
+    }
+
+    private void CloseUpdateModal()
+    {
+        showUpdateModal = false;
+    }
+
+    private async Task UpdateProfile()
+    {
+        if (string.IsNullOrWhiteSpace(EditModel.FullName))
+        {
+            await JS.InvokeVoidAsync("toastr.error", "El nombre es obligatorio");
+            return;
+        }
+
+        isSubmitting = true;
+        try
+        {
+            var response = await AuthenticationService.UpdateUser(EditModel);
+            if (response.success)
+            {
+                await LoadProfile();
+                showUpdateModal = false;
+                await JS.InvokeVoidAsync("toastr.success", "Perfil actualizado correctamente");
+            }
+            else
+            {
+                await JS.InvokeVoidAsync("toastr.error", response.Message);
+            }
+        }
+        catch (Exception ex)
+        {
+            await JS.InvokeVoidAsync("toastr.error", "Error inesperado al actualizar el perfil");
+            Console.WriteLine(ex.Message);
+        }
+        finally
+        {
+            isSubmitting = false;
+        }
+    }
 
     private int CurrentYear => DateTime.Now.Year;
 
@@ -177,7 +267,6 @@
     private AddressModel newAddress = new();
     
     // Profile Picture Logic
-    private string? ProfileImageDataUrl;
     private const long MaxFileSize = 1024 * 1024 * 5; // 5MB
 
     private async Task OnInputFileChange(InputFileChangeEventArgs e)
@@ -191,7 +280,7 @@
                 var buffer = new byte[resizedFile.Size];
                 await resizedFile.OpenReadStream(MaxFileSize).ReadAsync(buffer);
                 var base64 = Convert.ToBase64String(buffer);
-                ProfileImageDataUrl = $"data:{file.ContentType};base64,{base64}";
+                EditModel.ProfileImage = $"data:{file.ContentType};base64,{base64}";
             }
         }
         catch (Exception ex)

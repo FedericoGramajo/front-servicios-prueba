@@ -1,5 +1,5 @@
 @attribute [Route(RouteConstants.ProfessionalDashboard)]
-@attribute [Authorize(Roles = "Professional,Admin")]
+@attribute [Authorize(Roles = Constant.Administration.ProfessionalRole)]
 @using ClientLibrary.Models.ProfessionalCat
 @using ClientLibrary.Models.ServicioAhora.ServOffering
 @inject IProfessionalDashboardService DashboardService

@@ -11,6 +11,7 @@ namespace ClientLibrary.Services
         Task<LoginResponse> RequestPasswordReset(RequestPasswordReset user);
         Task<ServiceResponse> VerifyToken(VerifyToken verifyToken);
         Task<ServiceResponse> ChangePassword(ChangePassword changePassword);
+        Task<ServiceResponse> UpdateUser(UserUpdate user);
         Task<UserDto> GetMyProfile();
         Task<ServiceResponse> LogoutAsync();
     }

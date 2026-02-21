@@ -42,6 +42,7 @@ namespace ClientLibrary.Helper
             public const string ChangePassword          = "authentication/change-password";
             public const string Me                      = "authentication/me";
             public const string Logout                  = "authentication/logout";
+            public const string Update                  = "authentication/update";
         }
         public static class ApiCallType
         {
@@ -120,6 +121,7 @@ namespace ClientLibrary.Helper
             public const string RemoveCertification     = "professional/certifications/remove";
 
             // Public listing
+            public const string Get                     = "Professional/single";
             public const string GetAllPublic            = "Professional/all";
         }
         public static class Admin

@@ -364,27 +364,9 @@
 @code {
     private readonly CultureInfo LocalCulture = new("es-AR");
 
-    private readonly SearchConfig SearchBar = new("Buscar servicios hogareños en ServicioAhora!", "Buscar");
-
-    private readonly IReadOnlyList<MenuActionModel> AccountActions = MenuConstants.AccountActions;
+    private readonly SearchConfig SearchBar = MenuConstants.SearchBarConfig;
     private readonly IReadOnlyList<NavLinkModel> PrimaryNavLinks = MenuConstants.PrimaryNavLinks;
-
-    private readonly IReadOnlyList<string> FooterContact = new List<string>
-    {
-        "Tel: +54 11 5555 1111",
-        "Email: hola@servicioahora.com",
-        "Horario: Lunes a domingo 8 a 22 h"
-    };
-
-    private readonly IReadOnlyList<FooterGroupModel> FooterGroups = new List<FooterGroupModel>
-    {
-        new("Explorá más", new []
-        {
-            new FooterLinkModel("Servicios", RouteConstants.HashServices),
-            new FooterLinkModel("Profesionales", RouteConstants.Professionals),
-            new FooterLinkModel("Garantías", RouteConstants.HashGarantias)
-        })
-    };
+    private readonly IReadOnlyList<MenuActionModel> AccountActions = MenuConstants.AccountActions;
 
     private List<GetCategory> Categories { get; set; } = new();
     private List<GetServiceOffering> Services { get; set; } = new();
