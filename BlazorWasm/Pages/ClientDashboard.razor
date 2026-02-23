@@ -3,7 +3,9 @@
 @using ClientLibrary.Models.Landing
 @using BlazorWasm.Shared.Client
 @using ClientLibrary.Services
-@inject IServiceHistoryService ServiceHistoryService
+@using ClientLibrary.Services.Contracts
+@inject IBookingService BookingService
+@inject IHttpClientHelper HttpClientHelper
 
 <PageTitle>Mi Actividad - ServicioAhora!</PageTitle>
 
@@ -13,48 +15,58 @@
         <div class="section-heading flex-column flex-lg-row mb-4">
             <div>
                 <p class="text-uppercase text-muted small mb-1">Mi Actividad</p>
+                <h2 class="fw-bold text-dark">Panel de Control</h2>
             </div>
             <div class="d-flex gap-2">
                 <a class="btn btn-primary" href="@RouteConstants.Search">Buscar servicios</a>
             </div>
         </div>
 
-        <!-- Metrics -->
-        <ClientMetrics TotalInvested="@TotalInvested"
-                       UpcomingCount="@UpcomingCount" 
-                       InProgressCount="@InProgressCount" 
-                       CompletedCount="@CompletedCount" />
-
-        <!-- Navigation Tabs -->
-        <ul class="nav nav-tabs mb-4">
-            <li class="nav-item">
-                <button class="nav-link @(ActiveTab == "history" ? "active fw-bold" : "")" @onclick='() => ActiveTab = "history"'>
-                    <i class="fa-solid fa-chart-line me-2"></i>Mi Actividad
-                </button>
-            </li>
-        </ul>
-
-        <!-- Content -->
-        @if (ActiveTab == "history")
+        @if (isLoading)
         {
-            <ClientServiceHistory History="History" />
+            <div class="text-center py-5">
+                <div class="spinner-border text-success" role="status"></div>
+                <p class="mt-2 text-muted">Cargando tus servicios...</p>
+            </div>
         }
+        else
+        {
+            <!-- Metrics -->
+            <ClientMetrics TotalInvested="@TotalInvested"
+                           UpcomingCount="@UpcomingCount" 
+                           InProgressCount="@InProgressCount" 
+                           CompletedCount="@CompletedCount" />
 
+            <!-- Navigation Tabs -->
+            <ul class="nav nav-tabs mb-4">
+                <li class="nav-item">
+                    <button class="nav-link @(ActiveTab == "history" ? "active fw-bold" : "")" @onclick='() => ActiveTab = "history"'>
+                        <i class="fa-solid fa-chart-line me-2"></i>Mi Actividad
+                    </button>
+                </li>
+            </ul>
 
+            <!-- Content -->
+            @if (ActiveTab == "history")
+            {
+                <ClientServiceHistory History="History" />
+            }
+        }
     </main>
 </div>
 
 @code {
     private string ActiveTab { get; set; } = "history";
+    private bool isLoading = true;
 
     // Data State
     private List<ServiceHistoryItem> History { get; set; } = new();
 
     // Metrics Calculation
-    private decimal TotalInvested => History.Where(h => h.Status.Equals("completado", StringComparison.OrdinalIgnoreCase)).Sum(h => h.Total);
-    private int UpcomingCount => History.Count(h => h.Date >= DateTime.Today && !h.Status.Equals("completado", StringComparison.OrdinalIgnoreCase));
-    private int InProgressCount => History.Count(h => h.Status.Equals("en-progreso", StringComparison.OrdinalIgnoreCase));
-    private int CompletedCount => History.Count(h => h.Status.Equals("completado", StringComparison.OrdinalIgnoreCase));
+    private decimal TotalInvested => History.Where(h => h.Status.ToLower().Contains("Finalizado") || h.Status.ToLower().Contains("finished")).Sum(h => h.Total);
+    private int UpcomingCount => History.Count(h => h.Status.ToLower().Contains("pendiente") || h.Status.ToLower().Contains("pending") || h.Status.ToLower().Contains("confirmed"));
+    private int InProgressCount => History.Count(h => h.Status.ToLower().Contains("En curso") || h.Status.ToLower().Contains("progress"));
+    private int CompletedCount => History.Count(h => h.Status.ToLower().Contains("Finalizado") || h.Status.ToLower().Contains("finished") || h.Status.ToLower().Contains("completed"));
 
 
     [Parameter]
@@ -72,13 +84,30 @@
 
     private async Task LoadDataAsync()
     {
+        isLoading = true;
         try 
         {
-            History = await ServiceHistoryService.GetHistoryAsync() ?? new();
+            var userId = await HttpClientHelper.GetUserIdAsync();
+            if (!string.IsNullOrEmpty(userId))
+            {
+                var bookings = await BookingService.GetCustomerBookingsAsync(userId);
+                History = bookings.Select(b => new ServiceHistoryItem(
+                    b.ServiceName,
+                    b.CategoryName,
+                    b.ProfessionalName,
+                    b.Date,
+                    b.Status,
+                    b.TotalAmount
+                )).ToList();
+            }
         } 
         catch (Exception ex)
         {
             Console.WriteLine($"Error loading dashboard data: {ex.Message}");
+        }
+        finally
+        {
+            isLoading = false;
         }
     }
 }

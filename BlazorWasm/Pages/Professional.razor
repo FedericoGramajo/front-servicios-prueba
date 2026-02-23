@@ -8,7 +8,7 @@
 @inject NavigationManager Navigation
 @inject IProfessionalService ProfService
 @inject IServOfferingService ServiceService
-
+@using BlazorWasm.Shared.Components
 <PageTitle>Profesional - ServicioAhora!</PageTitle>
 
 <div class="landing-page">
@@ -32,20 +32,13 @@
                 <div class="col-lg-4">
                     <div class="surface-card h-100 text-center">
                         <div class="ratio ratio-1x1 mb-3 rounded overflow-hidden shadow-sm bg-light">
+
                             <div class="d-flex align-items-center justify-content-center" style="position: absolute; top: 0; left: 0; right: 0; bottom: 0;">
-                                @if (!string.IsNullOrEmpty(ProfessionalData.ProfileImage))
-                                {
-                                    <img src="@ProfessionalData.ProfileImage" alt="@ProfessionalData.FullName" class="w-100 h-100 object-fit-cover" />
-                                }
-                                else
-                                {
-                                    <i class="fa-solid fa-circle-user fa-8x text-muted opacity-25"></i>
-                                }
+                                <StaffAvatar ImageUrl="@ProfessionalData.ProfileImage" Name="@ProfessionalData.FullName" Size="xl" />
                             </div>
                         </div>
                         <h2 class="mb-1">@ProfessionalData.FullName</h2>
                         <p class="text-muted mb-1">@(string.Join(", ", ProfessionalData.Categories))</p>
-,ReplacementChunks:[{AllowMultiple:false,EndLine:46,ReplacementContent:
                         <div class="d-flex justify-content-center gap-3 my-3">
                             <span class="pill"><i class="fa-solid fa-star text-warning me-1"></i>@ProfessionalData.AvgRating.ToString("0.0")</span>
                             <span class="pill">@ProfessionalData.BookingsCount proyectos</span>
@@ -58,7 +51,7 @@
                                 <div class="d-flex flex-wrap gap-2 justify-content-center">
                                     @foreach (var license in ProfessionalData.Licenses)
                                     {
-                                        <span class="badge bg-light text-dark border">@license</span>
+                                        <span class="badge bg-light text-dark border">@license.Number</span>
                                     }
                                 </div>
                             </div>

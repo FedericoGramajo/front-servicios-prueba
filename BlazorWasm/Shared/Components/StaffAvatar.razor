@@ -1,0 +1,86 @@
+@using System.Text.RegularExpressions
+
+<div class="staff-avatar @SizeClass" style="@CustomStyle">
+    @if (!string.IsNullOrEmpty(ImageUrl))
+    {
+        <img src="@ImageUrl" alt="Avatar de @Name" class="avatar-img" @onerror="OnImageError" />
+    }
+    else
+    {
+        <div class="avatar-placeholder" style="background-color: @PlaceholderBgColor;">
+            <span class="avatar-initials">@Initials</span>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter] public string? ImageUrl { get; set; }
+    [Parameter] public string Name { get; set; } = "Usuario";
+    [Parameter] public string Size { get; set; } = "md"; // sm, md, lg, xl
+    [Parameter] public string? CustomStyle { get; set; }
+
+    private string SizeClass => $"avatar-{Size}";
+    
+    private string Initials 
+    {
+        get 
+        {
+            if (string.IsNullOrWhiteSpace(Name)) return "?";
+            var parts = Name.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+            if (parts.Length == 1) return parts[0][0].ToString().ToUpper();
+            return (parts[0][0].ToString() + parts[^1][0].ToString()).ToUpper();
+        }
+    }
+
+    private string PlaceholderBgColor 
+    {
+        get 
+        {
+            // Simple color generator based on name
+            var colors = new[] { "#4a7c59", "#0d6efd", "#6610f2", "#6f42c1", "#d63384", "#fd7e14", "#198754", "#20c997", "#0dcaf0" };
+            var hash = Math.Abs(Name.GetHashCode());
+            return colors[hash % colors.Length];
+        }
+    }
+
+    private void OnImageError()
+    {
+        ImageUrl = null;
+    }
+}
+
+<style>
+    .staff-avatar {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 50%;
+        overflow: hidden;
+        flex-shrink: 0;
+        user-select: none;
+    }
+
+    .avatar-img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
+
+    .avatar-placeholder {
+        width: 100%;
+        height: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-weight: 600;
+        text-transform: uppercase;
+    }
+
+    /* Sizes */
+    .avatar-sm { width: 44px; height: 44px; font-size: 0.9rem; }
+    .avatar-md { width: 64px; height: 64px; font-size: 1.2rem; }
+    .avatar-lg { width: 110px; height: 110px; font-size: 2rem; }
+    .avatar-xl { width: 200px; height: 200px; font-size: 3.5rem; }
+    .avatar-xxl { width: 280px; height: 280px; font-size: 5rem; }
+</style>

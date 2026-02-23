@@ -26,15 +26,9 @@
                                     <div class="col-md-4">
                                         <div class="card professional-card h-100 overflow-hidden">
                                             <div class="ratio ratio-4x3 bg-light border-bottom">
+@using BlazorWasm.Shared.Components
                                                 <div class="d-flex align-items-center justify-content-center" style="position: absolute; top: 0; left: 0; right: 0; bottom: 0;">
-                                                    @if (!string.IsNullOrEmpty(professional.ImageUrl))
-                                                    {
-                                                        <img src="@professional.ImageUrl" class="w-100 h-100 object-fit-cover" alt="Foto de @professional.Name" loading="lazy" />
-                                                    }
-                                                    else
-                                                    {
-                                                        <i class="fa-solid fa-circle-user fa-6x text-muted opacity-25"></i>
-                                                    }
+                                                    <StaffAvatar ImageUrl="@professional.ImageUrl" Name="@professional.Name" Size="lg" />
                                                 </div>
                                             </div>
                                             <div class="card-body">

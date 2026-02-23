@@ -3,6 +3,8 @@
 @using ClientLibrary.Models.Landing
 @using BlazorWasm.Shared.Landing
 @using System.Globalization
+@using ClientLibrary.Services.Implementations
+@inject IAuthenticationService AuthenticationService
 
 <div class="landing-page">
     <LandingHeader HeaderId="main-layout"
@@ -36,7 +38,7 @@
 
     private List<MenuActionModel> AccountLinks { get; set; } = new();
     private readonly IReadOnlyList<NavLinkModel> PrimaryNavLinks = MenuConstants.PrimaryNavLinks;
-    
+
     private string UserName { get; set; } = string.Empty;
     private string UserInitial { get; set; } = string.Empty;
 
@@ -44,13 +46,22 @@
     private readonly IReadOnlyList<FooterGroupModel> FooterGroups = MenuConstants.FooterGroups;
 
     private int CurrentYear => DateTime.Now.Year;
+    private UserDto? UserProfile { get; set; }
 
     protected override async Task OnInitializedAsync()
     {
         await UpdateMenu();
         AuthStateProvider.AuthenticationStateChanged += async _ => await UpdateMenu();
     }
-
+    private async Task<UserDto> LoadProfile()
+    {
+        var profile = await AuthenticationService.GetMyProfile();
+        if (profile != null)
+        {
+            return profile;
+        }
+        else return null!;
+    }
     private async Task UpdateMenu()
     {
         var authState = await AuthStateProvider.GetAuthenticationStateAsync();
@@ -60,10 +71,11 @@
 
         if (user.Identity?.IsAuthenticated == true)
         {
-            var fullName = user.Identity.Name;
+            UserProfile = await LoadProfile();
+            var fullName = UserProfile.FullName;
             if (string.IsNullOrEmpty(fullName))
             {
-                 fullName = user.FindFirst("unique_name")?.Value ?? user.FindFirst(System.Security.Claims.ClaimTypes.Name)?.Value ?? "Usuario";
+                fullName = "Usuario";
             }
             
             UserName = fullName.Split(' ')[0]; // First name

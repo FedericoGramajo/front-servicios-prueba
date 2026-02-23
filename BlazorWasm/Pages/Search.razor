@@ -21,15 +21,15 @@
         <div class="d-flex flex-column gap-4">
             <div class="surface-card search-hero">
                 <div class="d-flex flex-column flex-lg-row align-items-start align-items-lg-center gap-3 justify-content-between">
-                    <div>
-                        <p class="text-uppercase fw-semibold text-primary mb-2">Resultados</p>
-                        <h1 class="mb-2">Explorá servicios hogareños</h1>
-                        <p class="mb-0 text-muted">Mostrando coincidencias para <strong>@(string.IsNullOrWhiteSpace(searchTerm) ? "todas las categorías" : searchTerm)</strong>.</p>
+                    <div class="col-12 col-lg-auto mb-3 mb-lg-0">
+                        <p class="text-uppercase fw-semibold text-primary mb-2 small">Resultados</p>
+                        <h1 class="mb-2 h3 h1-lg">Explorá servicios hogareños</h1>
+                        <p class="mb-0 text-muted small">Mostrando coincidencias para <strong>@(string.IsNullOrWhiteSpace(searchTerm) ? "todas las categorías" : searchTerm)</strong>.</p>
                     </div>
-                    <form class="search-bar" role="search" @onsubmit="OnSearch" @onsubmit:preventDefault>
+                    <form class="search-bar w-100 w-lg-auto" role="search" @onsubmit="OnSearch" @onsubmit:preventDefault style="max-width: 500px;">
                         <div class="input-group">
                             <span class="input-group-text"><i class="fa-solid fa-magnifying-glass"></i></span>
-                            <input class="form-control" type="search" placeholder="Buscar servicios hogareños en ServicioAhora!" aria-label="Buscar" @bind="searchTerm" />
+                            <input class="form-control" type="search" placeholder="Buscar servicios..." aria-label="Buscar" @bind="searchTerm" />
                             <button class="btn btn-primary" type="submit">Buscar</button>
                         </div>
                     </form>

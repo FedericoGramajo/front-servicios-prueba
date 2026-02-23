@@ -1,4 +1,6 @@
-﻿namespace ClientLibrary.Models.Authentication.Rol.Professional
+﻿using ClientLibrary.Models.ProfessionalLicense;
+
+namespace ClientLibrary.Models.Authentication.Rol.Professional
 {
     public class GetProfessional 
     {
@@ -17,7 +19,7 @@
         public string? ProfileImage { get; set; } // Added
 
         // Resúmenes para no cargar todo el grafo
-        public List<string> Licenses { get; set; } = new();      // Números / códigos
+        public List<GetProfessionalLicense> Licenses { get; set; } = new();      // Números / códigos
         public List<string> Categories { get; set; } = new();    // Nombres de categorías
         public int ServicesCount { get; set; }
         public int BookingsCount { get; set; } // Added: servicios contratados/reserva

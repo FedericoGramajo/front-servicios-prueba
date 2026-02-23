@@ -1,0 +1,284 @@
+@using ClientLibrary.Models.Address
+@using ClientLibrary.Models
+@using ClientLibrary.Services.Contracts
+@using BlazorWasm.Shared.Components
+@inject IJSRuntime js
+@inject IAddressService addressService
+
+<div class="surface-card">
+    <div class="section-heading flex-column flex-lg-row">
+        <div>
+            <p class="text-uppercase text-muted small mb-1">Mis Ubicaciones</p>
+            <h3 class="mb-0">Gestión de Direcciones</h3>
+        </div>
+        <div>
+            <button class="btn btn-outline-primary" @onclick="ShowAddAddressModal">
+                <i class="fa-solid fa-plus me-2"></i>Nueva Dirección
+            </button>
+        </div>
+    </div>
+
+    @if (isLoadingAddresses)
+    {
+        <div class="text-center py-5">
+            <div class="spinner-border text-primary" role="status"></div>
+            <p class="mt-2 text-muted small">Buscando tus direcciones...</p>
+        </div>
+    }
+    else if (!Addresses.Any())
+    {
+        <div class="text-center py-5 bg-light rounded-4 border border-dashed mt-3">
+            <i class="fa-solid fa-map-location-dot fa-3x text-muted mb-3 opacity-25"></i>
+            <p class="text-muted">No tenés direcciones guardadas aún.</p>
+            <button class="btn btn-link text-primary p-0" @onclick="ShowAddAddressModal">Agregar mi primera dirección</button>
+        </div>
+    }
+    else
+    {
+        <div class="row g-3 mt-2">
+            @foreach (var address in Addresses)
+            {
+                <div class="col-md-6 col-xl-4">
+                    <div class="card h-100 border-0 shadow-sm @(address.IsMain ? "border-start border-4 border-success" : "")">
+                        <div class="card-body p-3">
+                            <div class="d-flex justify-content-between align-items-start mb-2">
+                                <span class="badge @(GetBadgeClass(address.Type))">@address.Type</span>
+                                @if (address.IsMain)
+                                {
+                                    <span class="badge bg-success-subtle text-success border border-success-subtle">Principal</span>
+                                }
+                            </div>
+                            <h5 class="mb-1 text-dark">@address.Street @address.Number</h5>
+                            <p class="text-muted small mb-3"><i class="fa-solid fa-location-dot me-1"></i> Rosario, Santa Fe</p>
+                            
+                            <div class="d-flex justify-content-end gap-2 mt-auto pt-2 border-top">
+                                <button class="btn btn-sm btn-light text-primary" @onclick="() => EditAddress(address)" title="Editar">
+                                    <i class="fa-solid fa-pen-to-square"></i>
+                                </button>
+                                <button class="btn btn-sm btn-light text-danger" @onclick="() => ConfirmDeleteAddress(address)" title="Eliminar">
+                                    <i class="fa-solid fa-trash"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+    }
+</div>
+
+<!-- Modal para Nueva/Editar Dirección -->
+@if (showAddressModal)
+{
+    <div class="modal fade show d-block" tabindex="-1" style="background-color: rgba(0,0,0,0.5); z-index: 1050;">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-0 shadow-lg">
+                <div class="modal-header">
+                    <h5 class="modal-title fw-bold">@(currentAddress.Id == Guid.Empty ? "Agregar Nueva Dirección" : "Editar Dirección")</h5>
+                    <button type="button" class="btn-close" @onclick="CloseAddressModal"></button>
+                </div>
+                <EditForm Model="currentAddress" OnValidSubmit="SaveAddress">
+                    <DataAnnotationsValidator />
+                    <div class="modal-body p-4">
+                        <div class="row g-3">
+                            <div class="col-8">
+                                <label class="form-label fw-semibold">Calle</label>
+                                <InputText class="form-control" @bind-Value="currentAddress.Street" placeholder="Ej. Av. Pellegrini" />
+                                <ValidationMessage For="@(() => currentAddress.Street)" class="text-danger small" />
+                            </div>
+                            <div class="col-4">
+                                <label class="form-label fw-semibold">Número</label>
+                                <InputText class="form-control" @bind-Value="currentAddress.Number" placeholder="1234" />
+                                <ValidationMessage For="@(() => currentAddress.Number)" class="text-danger small" />
+                            </div>
+                            <div class="col-12">
+                                <label class="form-label fw-semibold">Tipo (Etiqueta)</label>
+                                <InputSelect class="form-select" @bind-Value="currentAddress.Type">
+                                    <option value="Casa">Casa 🏠</option>
+                                    <option value="Trabajo">Trabajo 💼</option>
+                                    <option value="Otro">Otro 📍</option>
+                                </InputSelect>
+                            </div>
+                            <div class="col-12 mt-3">
+                                <div class="form-check form-switch card p-3 bg-light border-0">
+                                    <InputCheckbox class="form-check-input" @bind-Value="currentAddress.IsMain" id="isMainCheck" />
+                                    <label class="form-check-label ms-2 fw-medium" for="isMainCheck">
+                                        Establecer como dirección principal
+                                    </label>
+                                    <div class="form-text mt-1">Se usará por defecto en tus nuevas reservas.</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer bg-light">
+                        <button type="button" class="btn btn-link text-muted text-decoration-none px-4" @onclick="CloseAddressModal">Cancelar</button>
+                        <button type="submit" class="btn btn-primary px-4 shadow-sm" disabled="@isSubmittingAddress">
+                            @if (isSubmittingAddress)
+                            {
+                                <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+                                <span>Guardando...</span>
+                            }
+                            else
+                            {
+                                <span>Guardar dirección</span>
+                            }
+                        </button>
+                    </div>
+                </EditForm>
+            </div>
+        </div>
+    </div>
+}
+
+<ConfirmationModal @ref="confirmationModal" 
+                   Title="Eliminar Dirección" 
+                   Message="¿Estás seguro de que querés eliminar esta dirección? Esta acción no se puede deshacer." 
+                   OnConfirm="DeleteAddress" />
+
+@code {
+    [Parameter, EditorRequired] public string UserId { get; set; } = string.Empty;
+
+    private List<GetAddres> Addresses = new();
+    private bool isLoadingAddresses = true;
+    private bool showAddressModal = false;
+    private bool isSubmittingAddress = false;
+    private UpdateAddress currentAddress = new();
+    private GetAddres? addressToDelete;
+    
+    private ConfirmationModal confirmationModal = default!;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadAddresses();
+    }
+
+    private async Task LoadAddresses()
+    {
+        if (string.IsNullOrEmpty(UserId)) return;
+        
+        isLoadingAddresses = true;
+        try
+        {
+            var response = await addressService.GetAddressesAsync(UserId);
+            if (response != null && response.success && response.Data != null)
+            {
+                Addresses = response.Data.OrderByDescending(a => a.IsMain).ToList();
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading addresses: {ex.Message}");
+        }
+        finally
+        {
+            isLoadingAddresses = false;
+        }
+    }
+
+    private string GetBadgeClass(string type) => type switch
+    {
+        "Casa" => "bg-primary-subtle text-primary",
+        "Trabajo" => "bg-info-subtle text-info",
+        _ => "bg-secondary-subtle text-secondary"
+    };
+
+    private void ShowAddAddressModal()
+    {
+        currentAddress = new UpdateAddress { Type = "Casa", IsMain = !Addresses.Any() };
+        showAddressModal = true;
+    }
+
+    private void EditAddress(GetAddres address)
+    {
+        currentAddress = new UpdateAddress
+        {
+            Id = address.Id,
+            Street = address.Street,
+            Number = address.Number,
+            Type = address.Type,
+            IsMain = address.IsMain
+        };
+        showAddressModal = true;
+    }
+
+    private void CloseAddressModal() => showAddressModal = false;
+
+    private async Task SaveAddress()
+    {
+        isSubmittingAddress = true;
+        try
+        {
+            ServiceResponse result;
+            if (currentAddress.Id == Guid.Empty)
+            {
+                var createModel = new CreateAddres
+                {
+                    Street = currentAddress.Street,
+                    Number = currentAddress.Number,
+                    Type = currentAddress.Type,
+                    IsMain = currentAddress.IsMain
+                };
+                result = await addressService.AddAddressAsync(createModel);
+            }
+            else
+            {
+                result = await addressService.UpdateAddressAsync(currentAddress);
+            }
+
+            if (result.success)
+            {
+                await LoadAddresses();
+                showAddressModal = false;
+                await js.ToastrSuccess("Ubicación guardada correctamente");
+            }
+            else
+            {
+                await js.ToastrError(result.Message);
+            }
+        }
+        catch (Exception ex)
+        {
+            await js.ToastrError("Error al guardar la dirección");
+            Console.WriteLine(ex.Message);
+        }
+        finally
+        {
+            isSubmittingAddress = false;
+        }
+    }
+
+    private void ConfirmDeleteAddress(GetAddres address)
+    {
+        addressToDelete = address;
+        confirmationModal.Show();
+    }
+
+    private async Task DeleteAddress()
+    {
+        if (addressToDelete == null) return;
+
+        try
+        {
+            var result = await addressService.DeleteAddressAsync(addressToDelete.Id);
+            if (result.success)
+            {
+                await LoadAddresses();
+                await js.ToastrSuccess("Dirección eliminada");
+            }
+            else
+            {
+                await js.ToastrError(result.Message);
+            }
+        }
+        catch (Exception ex)
+        {
+            await js.ToastrError("Error al eliminar la dirección");
+            Console.WriteLine(ex.Message);
+        }
+        finally
+        {
+            await confirmationModal.Hide();
+            addressToDelete = null;
+        }
+    }
+}

@@ -10,10 +10,10 @@
             <button class="btn btn-sm @(FilterStatus == "pendiente" ? "btn-warning text-white" : "btn-outline-secondary")" @onclick='() => SetFilter("pendiente")'>
                 Pendientes
             </button>
-            <button class="btn btn-sm @(FilterStatus == "en-progreso" ? "btn-info text-white" : "btn-outline-secondary")" @onclick='() => SetFilter("en-progreso")'>
-                En progreso
+            <button class="btn btn-sm @(FilterStatus == "en-curso" ? "btn-info text-white" : "btn-outline-secondary")" @onclick='() => SetFilter("en-curso")'>
+                En curso
             </button>
-            <button class="btn btn-sm @(FilterStatus == "completado" ? "btn-success" : "btn-outline-secondary")" @onclick='() => SetFilter("completado")'>
+            <button class="btn btn-sm @(FilterStatus == "completado" ? "btn-primary" : "btn-outline-secondary")" @onclick='() => SetFilter("completado")'>
                 Completados
             </button>
         </div>
@@ -47,8 +47,12 @@
                         </td>
                         <td>@item.Professional</td>
                         <td>@item.Date.ToString("dd MMM", LocalCulture)</td>
+@using ClientLibrary.Helper
                         <td>
-                            <span class="status-pill @item.Status">@StatusLabel(item.Status)</span>
+                            <span class="badge @item.State.BadgeClass">
+                                <i class="@item.State.IconClass me-1 small"></i>
+                                @item.State.DisplayName
+                            </span>
                         </td>
                         <td class="text-end fw-semibold">@item.Total.ToString("C0", LocalCulture)</td>
                     </tr>
@@ -67,21 +71,26 @@
     private string FilterStatus { get; set; } = "todas";
 
     private IEnumerable<ServiceHistoryItem> FilteredHistory => History
-        .Where(h => FilterStatus == "todas" || h.Status == FilterStatus)
+        .Where(h => FilterStatus == "todas" || IsStatusMatch(h.Status, FilterStatus))
         .Where(h => string.IsNullOrWhiteSpace(Term)
             || h.Service.Contains(Term, StringComparison.OrdinalIgnoreCase)
-            || h.Professional.Contains(Term, StringComparison.OrdinalIgnoreCase));
+            || (h.Professional != null && h.Professional.Contains(Term, StringComparison.OrdinalIgnoreCase)));
+
+    private bool IsStatusMatch(string current, string filter)
+    {
+        if (string.IsNullOrEmpty(current)) return false;
+        var c = current.ToLower();
+        return filter switch
+        {
+            "pendiente" => c == "pending" || c == "pendiente",
+            "en-curso" => c == "inprogress" || c == "en curso",
+            "completado" or "finalizado" => c == "completed" || c == "completado" || c == "finalizado",
+            _ => c == filter
+        };
+    }
 
     private void SetFilter(string status)
     {
         FilterStatus = status;
     }
-
-    private static string StatusLabel(string status) => status switch
-    {
-        "pendiente" => "Pendiente",
-        "en-progreso" => "En progreso",
-        "completado" => "Completado",
-        _ => status
-    };
 }

@@ -9,6 +9,7 @@ using ClientLibrary.Models.Category;
 using ClientLibrary.Models.Landing;
 using ClientLibrary.Models.ProfessionalCat;
 using ClientLibrary.Models.ServicioAhora.ServOffering;
+using ClientLibrary.Models.ProfessionalLicense;
 using ClientLibrary.Services.Contracts;
 
 namespace ClientLibrary.Services.Implementations;
@@ -92,10 +93,11 @@ public class ProfessionalDashboardService(IHttpClientHelper httpClient, IApiCall
         var client = await httpClient.GetPrivateClientAsync();
         var apiCall = new ApiCall
         {
-            Route = $"{Constant.Professional.DeleteService}/{serviceSlug}",
+            Route = Constant.Professional.DeleteService,
             Type = Constant.ApiCallType.Delete,
             Client = client
         };
+        apiCall.ToString(serviceSlug);
         await apiHelper.ApiCallTypeCall<Dummy>(apiCall);
     }
 
@@ -104,10 +106,11 @@ public class ProfessionalDashboardService(IHttpClientHelper httpClient, IApiCall
         var client = await httpClient.GetPrivateClientAsync();
         var apiCall = new ApiCall
         {
-            Route = $"{Constant.ServiceOffering.GetByProfessional}/{professionalId}",
+            Route = Constant.ServiceOffering.GetByProfessional,
             Type = Constant.ApiCallType.Get,
             Client = client
         };
+        apiCall.ToString(professionalId);
         var result = await apiHelper.ApiCallTypeCall<Dummy>(apiCall);
         return await apiHelper.GetServiceResponse<List<GetServiceOffering>>(result) ?? new List<GetServiceOffering>();
     }
@@ -131,10 +134,11 @@ public class ProfessionalDashboardService(IHttpClientHelper httpClient, IApiCall
         var client = await httpClient.GetPrivateClientAsync();
         var apiCall = new ApiCall
         {
-            Route = $"{Constant.Professional.GetMyCategories}/{professionalId}",
+            Route = Constant.Professional.GetMyCategories,
             Type = Constant.ApiCallType.Get,
             Client = client
         };
+        apiCall.ToString(professionalId);
         var result = await apiHelper.ApiCallTypeCall<Dummy>(apiCall);
         return await apiHelper.GetServiceResponse<List<GetProfessionalCategory>>(result) ?? new List<GetProfessionalCategory>();
     }
@@ -183,10 +187,11 @@ public class ProfessionalDashboardService(IHttpClientHelper httpClient, IApiCall
         var client = await httpClient.GetPrivateClientAsync();
         var apiCall = new ApiCall
         {
-            Route = $"{Constant.Professional.GetAvailability}/{professionalId}",
+            Route =Constant.Professional.GetAvailability,
             Type = Constant.ApiCallType.Get,
             Client = client
         };
+        apiCall.ToString(professionalId);
         var result = await apiHelper.ApiCallTypeCall<Dummy>(apiCall);
         return await apiHelper.GetServiceResponse<List<ProfessionalAvailability>>(result) ?? new List<ProfessionalAvailability>();
     }
@@ -253,10 +258,11 @@ public class ProfessionalDashboardService(IHttpClientHelper httpClient, IApiCall
         var client = await httpClient.GetPrivateClientAsync();
         var apiCall = new ApiCall
         {
-            Route = $"{Constant.Professional.RemoveAvailability}/{id}",
+            Route = Constant.Professional.RemoveAvailability,
             Type = Constant.ApiCallType.Delete,
             Client = client
         };
+        apiCall.ToString(id);
         var result = await apiHelper.ApiCallTypeCall<Dummy>(apiCall);
         
         if (result == null)
@@ -274,59 +280,76 @@ public class ProfessionalDashboardService(IHttpClientHelper httpClient, IApiCall
         }
     }
     
-    // Certification Management
-    public async Task<List<CertificationModel>> GetCertificationsAsync()
+    // Certification/License Management
+    public async Task<List<GetProfessionalLicense>> GetLicensesAsync(string professionalId)
     {
         var client = await httpClient.GetPrivateClientAsync();
         var apiCall = new ApiCall
         {
-            Route = Constant.Professional.GetCertifications,
+            Route = Constant.ProfessionalLicense.GetAll,
             Type = Constant.ApiCallType.Get,
             Client = client
         };
+        apiCall.ToString(professionalId);
         var result = await apiHelper.ApiCallTypeCall<Dummy>(apiCall);
-        return await apiHelper.GetServiceResponse<List<CertificationModel>>(result) ?? new List<CertificationModel>();
+        return await apiHelper.GetServiceResponse<List<GetProfessionalLicense>>(result) ?? new List<GetProfessionalLicense>();
     }
 
-    public async Task<ServiceResponse> AddCertificationAsync(CertificationModel certification)
+    public async Task<ServiceResponse> AddLicenseAsync(CreateProfessionalLicense license)
     {
         var client = await httpClient.GetPrivateClientAsync();
         var apiCall = new ApiCall
         {
-            Route = Constant.Professional.AddCertification,
+            Route = Constant.ProfessionalLicense.Add,
             Type = Constant.ApiCallType.Post,
             Client = client,
-            Model = certification
+            Model = license
         };
-        var result = await apiHelper.ApiCallTypeCall<CertificationModel>(apiCall);
-        return await apiHelper.GetServiceResponse<ServiceResponse>(result);
+        var result = await apiHelper.ApiCallTypeCall<CreateProfessionalLicense>(apiCall);
+        return await apiHelper.GetServiceResponse<ServiceResponse>(result) ?? new ServiceResponse(false, "Error al agregar la licencia");
     }
 
-    public async Task<ServiceResponse> RemoveCertificationAsync(Guid id)
+    public async Task<ServiceResponse> UpdateLicenseAsync(UpdateProfessionalLicense license)
     {
         var client = await httpClient.GetPrivateClientAsync();
         var apiCall = new ApiCall
         {
-            Route = $"{Constant.Professional.RemoveCertification}/{id}",
+            Route = Constant.ProfessionalLicense.Update,
+            Type = Constant.ApiCallType.Update,
+            Client = client,
+            Model = license
+        };
+        var result = await apiHelper.ApiCallTypeCall<UpdateProfessionalLicense>(apiCall);
+        return await apiHelper.GetServiceResponse<ServiceResponse>(result) ?? new ServiceResponse(false, "Error al actualizar la licencia");
+    }
+
+    public async Task<ServiceResponse> RemoveLicenseAsync(Guid id)
+    {
+        var client = await httpClient.GetPrivateClientAsync();
+        var apiCall = new ApiCall
+        {
+            Route = Constant.ProfessionalLicense.Delete,
             Type = Constant.ApiCallType.Delete,
             Client = client
         };
+        apiCall.ToString(id);
         var result = await apiHelper.ApiCallTypeCall<Dummy>(apiCall);
-        return await apiHelper.GetServiceResponse<ServiceResponse>(result);
+        return await apiHelper.GetServiceResponse<ServiceResponse>(result) ?? new ServiceResponse(false, "Error al eliminar la licencia");
     }
 
     // Booking Management
-    public async Task<ServiceResponse<IEnumerable<BookingDto>>> GetBookingsAsync(string professionalId)
+    public async Task<List<GetBooking>> GetBookingsAsync(string professionalId)
     {
         var client = await httpClient.GetPrivateClientAsync();
         var apiCall = new ApiCall
         {
-            Route = $"{Constant.Booking.GetByProfessional}/{professionalId}",
+            Route = Constant.Booking.GetByProfessional,
             Type = Constant.ApiCallType.Get,
             Client = client
         };
+        apiCall.ToString(professionalId);
         var result = await apiHelper.ApiCallTypeCall<Dummy>(apiCall);
-        return await apiHelper.GetServiceResponse<ServiceResponse<IEnumerable<BookingDto>>>(result);
+        return await apiHelper.GetServiceResponse<List<GetBooking>>(result) ?? new List<GetBooking>();
     }
 
     public async Task<ServiceResponse> AcceptBookingAsync(Guid bookingId)
@@ -334,13 +357,12 @@ public class ProfessionalDashboardService(IHttpClientHelper httpClient, IApiCall
         var client = await httpClient.GetPrivateClientAsync();
         var apiCall = new ApiCall
         {
-            Route = $"{Constant.Booking.Accept}/{bookingId}",
-            Type = Constant.ApiCallType.Post,
+            Route = $"{Constant.Booking.UpdateStatus}/{bookingId}?status={Constant.BookingStatus.Confirmed}",
+            Type = Constant.ApiCallType.Update,
             Client = client
         };
         var result = await apiHelper.ApiCallTypeCall<Dummy>(apiCall);
-        var response = result == null ? apiHelper.ConnectionError() : await apiHelper.GetServiceResponse<ServiceResponse>(result);
-        return response ?? new ServiceResponse(false, "Error inesperado al aceptar la reserva");
+        return await apiHelper.GetServiceResponse<ServiceResponse>(result) ?? apiHelper.ConnectionError();
     }
 
     public async Task<ServiceResponse> CancelBookingAsync(Guid bookingId)
@@ -348,12 +370,37 @@ public class ProfessionalDashboardService(IHttpClientHelper httpClient, IApiCall
         var client = await httpClient.GetPrivateClientAsync();
         var apiCall = new ApiCall
         {
-            Route = $"{Constant.Booking.Cancel}/{bookingId}",
-            Type = Constant.ApiCallType.Post,
+            Route = $"{Constant.Booking.UpdateStatus}/{bookingId}?status={Constant.BookingStatus.Canceled}",
+            Type = Constant.ApiCallType.Update,
             Client = client
         };
         var result = await apiHelper.ApiCallTypeCall<Dummy>(apiCall);
-        var response = result == null ? apiHelper.ConnectionError() : await apiHelper.GetServiceResponse<ServiceResponse>(result);
-        return response ?? new ServiceResponse(false, "Error inesperado al cancelar la reserva");
+        return await apiHelper.GetServiceResponse<ServiceResponse>(result) ?? apiHelper.ConnectionError();
+    }
+
+    public async Task<ServiceResponse> StartBookingAsync(Guid bookingId)
+    {
+        var client = await httpClient.GetPrivateClientAsync();
+        var apiCall = new ApiCall
+        {
+            Route = $"{Constant.Booking.UpdateStatus}/{bookingId}?status={Constant.BookingStatus.InProgress}",
+            Type = Constant.ApiCallType.Update,
+            Client = client
+        };
+        var result = await apiHelper.ApiCallTypeCall<Dummy>(apiCall);
+        return await apiHelper.GetServiceResponse<ServiceResponse>(result) ?? apiHelper.ConnectionError();
+    }
+
+    public async Task<ServiceResponse> FinishBookingAsync(Guid bookingId)
+    {
+        var client = await httpClient.GetPrivateClientAsync();
+        var apiCall = new ApiCall
+        {
+            Route = $"{Constant.Booking.UpdateStatus}/{bookingId}?status={Constant.BookingStatus.Completed}",
+            Type = Constant.ApiCallType.Update,
+            Client = client
+        };
+        var result = await apiHelper.ApiCallTypeCall<Dummy>(apiCall);
+        return await apiHelper.GetServiceResponse<ServiceResponse>(result) ?? apiHelper.ConnectionError();
     }
 }

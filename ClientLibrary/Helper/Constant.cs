@@ -137,16 +137,42 @@ namespace ClientLibrary.Helper
 
         public static class Notification
         {
+            public const string Me = "Notification";
             public const string GetAllByUser = "Notification/my-notifications";
             public const string GetUnreadByUser = "Notification/my-unread-notifications";
             public const string MarkAsRead = "Notification/mark-as-read";
+            public const string MarkAllAsRead = "Notification/mark-all-as-read";
+        }
+
+        public static class ProfessionalLicense
+        {
+            public const string Add = "ProfessionalLicense/add";
+            public const string Update = "ProfessionalLicense/update";
+            public const string Delete = "ProfessionalLicense/delete";
+            public const string GetAll = "ProfessionalLicense/professional";
         }
 
         public static class Booking
         {
+            public const string Create = "Booking/create";
             public const string GetByProfessional = "Booking/professional";
+            public const string GetByCustomer = "Booking/customer";
+            public const string UpdateStatus = "Booking/update-status";
             public const string Accept = "Booking/accept";
             public const string Cancel = "Booking/cancel";
+        }
+
+        public static class Availability
+        {
+            public const string GetSlots = "Availability/slots";
+        }
+        public static class BookingStatus
+        {
+            public const string Pending = "Pendiente";
+            public const string Confirmed = "Confirmado";
+            public const string InProgress = "En curso";
+            public const string Completed = "Finalizado";
+            public const string Canceled = "Cancelado";
         }
     }
 }

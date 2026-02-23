@@ -1,0 +1,136 @@
+@using ClientLibrary.Models.ProfessionalLicense
+@using ClientLibrary.Models.ProfessionalCat
+@using ClientLibrary.Services.Contracts
+@using ClientLibrary.Helper
+@inject IJSRuntime js
+
+<div class="modal fade" id="licenseFormModal" tabindex="-1" aria-labelledby="licenseFormModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="licenseFormModalLabel">
+                    <i class="fa-solid @(IsEdit ? "fa-pen-to-square" : "fa-plus") text-primary me-2"></i>
+                    @(IsEdit ? "Editar Certificación" : "Nueva Certificación")
+                </h5>
+                <button type="button" class="btn-close" @onclick="Hide" disabled="@IsProcessing"></button>
+            </div>
+            <EditForm Model="Model" OnValidSubmit="HandleSubmit">
+                <DataAnnotationsValidator />
+                <div class="modal-body">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label">Número de Certificado</label>
+                            <InputText @bind-Value="Model.Number" class="form-control" placeholder="Ej: LIC-12345" />
+                            <ValidationMessage For="@(() => Model.Number)" />
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Emisor / Institución</label>
+                            <InputText @bind-Value="Model.Issuer" class="form-control" placeholder="Ej: Universidad, Cámara, etc." />
+                            <ValidationMessage For="@(() => Model.Issuer)" />
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Fecha de Emisión</label>
+                            <InputDate @bind-Value="Model.IssueDate" class="form-control" />
+                            <ValidationMessage For="@(() => Model.IssueDate)" />
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Fecha de Vencimiento (Opcional)</label>
+                            <InputDate @bind-Value="Model.ExpirationDate" class="form-control" />
+                            <ValidationMessage For="@(() => Model.ExpirationDate)" />
+                        </div>
+                        <div class="col-md-12">
+                            <label class="form-label">Rubro Asociado</label>
+                            <InputSelect @bind-Value="Model.CategoryId" class="form-select">
+                                <option value="">Seleccione un rubro...</option>
+                                @foreach (var cat in Categories)
+                                {
+                                    <option value="@cat.CategoryId">@cat.CategoryName</option>
+                                }
+                            </InputSelect>
+                            <ValidationMessage For="@(() => Model.CategoryId)" />
+                        </div>
+                        <div class="col-md-12">
+                            <label class="form-label">URL de Imagen / Documento</label>
+                            <InputText @bind-Value="Model.Image" class="form-control" placeholder="https://..." />
+                            <ValidationMessage For="@(() => Model.Image)" />
+                            <small class="text-muted">Por ahora, ingresá una URL pública del documento.</small>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" @onclick="Hide" disabled="@IsProcessing">Cancelar</button>
+                    <button type="submit" class="btn btn-primary" disabled="@IsProcessing">
+                        @if (IsProcessing)
+                        {
+                            <span class="spinner-border spinner-border-sm me-1" role="status"></span>
+                            <span>Guardando...</span>
+                        }
+                        else
+                        {
+                            <span>Guardar</span>
+                        }
+                    </button>
+                </div>
+            </EditForm>
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter] public List<GetProfessionalCategory> Categories { get; set; } = new();
+    [Parameter] public EventCallback<bool> OnSave { get; set; }
+
+    private LicenseFormVM Model { get; set; } = new();
+    private bool IsEdit { get; set; }
+    private bool IsProcessing { get; set; }
+
+    public async Task Show(GetProfessionalLicense? license = null, string? professionalId = null)
+    {
+        if (license != null)
+        {
+            IsEdit = true;
+            Model = new LicenseFormVM
+            {
+                Id = license.Id,
+                Number = license.Number,
+                Issuer = license.Issuer,
+                IssueDate = license.IssueDate,
+                ExpirationDate = license.ExpirationDate,
+                CategoryId = license.CategoryId,
+                ProfessionalId = license.ProfessionalId,
+                Image = license.Image
+            };
+        }
+        else
+        {
+            IsEdit = false;
+            Model = new LicenseFormVM { 
+                IssueDate = DateTime.Today,
+                ProfessionalId = professionalId ?? string.Empty
+            };
+        }
+        await js.InvokeVoidAsync("ShowModal", "licenseFormModal");
+        StateHasChanged();
+    }
+
+    public async Task Hide()
+    {
+        await js.InvokeVoidAsync("HideModal", "licenseFormModal");
+    }
+
+    private async Task HandleSubmit()
+    {
+        IsProcessing = true;
+        await OnSave.InvokeAsync(IsEdit);
+        IsProcessing = false;
+    }
+
+    public LicenseFormVM GetModel() => Model;
+
+    public class LicenseFormVM : BaseProfessionalLicense
+    {
+        public Guid Id { get; set; }
+        public string ProfessionalId { get; set; } = string.Empty;
+        public Guid CategoryId { get; set; }
+    }
+}

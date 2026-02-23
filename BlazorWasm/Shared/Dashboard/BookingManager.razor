@@ -1,3 +1,4 @@
+@using ClientLibrary.Models
 @using ClientLibrary.Models.Booking
 @using ClientLibrary.Services.Contracts
 @inject IProfessionalDashboardService DashboardService
@@ -59,23 +60,41 @@
                                 <div><i class="fa-regular fa-calendar me-1 small"></i> @booking.ScheduledDate.ToShortDateString()</div>
                                 <div class="text-muted small"><i class="fa-regular fa-clock me-1 small"></i> @booking.ScheduledDate.ToShortTimeString() hs</div>
                             </td>
+@using ClientLibrary.Helper
                             <td>
-                                <span class="badge @GetStatusBadgeClass(booking.Status)">
-                                    @booking.Status
+                                <span class="badge @booking.State.BadgeClass">
+                                    <i class="@booking.State.IconClass me-1 small"></i>
+                                    @booking.State.DisplayName
                                 </span>
                             </td>
                             <td class="text-end">
                                 <div class="d-flex justify-content-end gap-2">
-                                    @if (booking.Status.ToLower() == "pending" || booking.Status.ToLower() == "pendiente")
+                                    @if (booking.State.CanAccept)
                                     {
                                         <button class="btn btn-sm btn-outline-success" @onclick="() => AcceptBooking(booking.Id)" title="Aceptar">
                                             <i class="fa-solid fa-check"></i>
                                         </button>
+                                    }
+                                    @if (booking.State.CanCancel)
+                                    {
                                         <button class="btn btn-sm btn-outline-danger" @onclick="() => CancelBooking(booking.Id)" title="Cancelar">
                                             <i class="fa-solid fa-xmark"></i>
                                         </button>
                                     }
-                                    else
+                                    @if (booking.State.CanStart)
+                                    {
+                                        <button class="btn btn-sm btn-success" @onclick="() => StartBooking(booking.Id)" title="Poner en curso">
+                                            <i class="fa-solid fa-play"></i>
+                                        </button>
+                                    }
+                                    @if (booking.State.CanFinish)
+                                    {
+                                        <button class="btn btn-sm btn-primary" @onclick="() => FinishBooking(booking.Id)" title="Finalizar">
+                                            <i class="fa-solid fa-flag-checkered"></i>
+                                        </button>
+                                    }
+                                    
+                                    @if (!booking.State.CanAccept && !booking.State.CanCancel && !booking.State.CanStart && !booking.State.CanFinish)
                                     {
                                         <button class="btn btn-sm btn-light" disabled>
                                             <i class="fa-solid fa-ellipsis"></i>
@@ -95,8 +114,18 @@
     [Parameter] public string ProfessionalId { get; set; } = string.Empty;
     [Parameter] public EventCallback OnStatusChanged { get; set; }
 
-    private List<BookingDto> Bookings { get; set; } = new();
+    private List<GetBooking> Bookings { get; set; } = new();
     private bool isLoading = true;
+    private bool isProcessing = false;
+
+    // Modal state
+    private ConfirmationModal confirmationModal = default!;
+    private string modalTitle = "Confirmación";
+    private string modalMessage = "¿Estás seguro?";
+    private string modalButtonText = "Confirmar";
+    private string modalButtonClass = "btn-danger";
+    private string modalAction = ""; // "accept" o "cancel"
+    private Guid pendingBookingId = Guid.Empty;
 
     protected override async Task OnInitializedAsync()
     {
@@ -109,9 +138,9 @@
         try
         {
             var response = await DashboardService.GetBookingsAsync(ProfessionalId);
-            if (response != null && response.success && response.Data != null)
+            if (response != null)
             {
-                Bookings = response.Data.ToList();
+                Bookings = response;
             }
         }
         catch (Exception ex)
@@ -126,50 +155,123 @@
 
     private async Task AcceptBooking(Guid id)
     {
-        var confirmed = await JS.InvokeAsync<bool>("confirm", "¿Estás seguro de que querés aceptar esta reserva?");
-        if (!confirmed) return;
-
-        var result = await DashboardService.AcceptBookingAsync(id);
-        if (result.success)
-        {
-            await LoadBookings();
-            await OnStatusChanged.InvokeAsync();
-        }
-        else
-        {
-            await JS.InvokeVoidAsync("alert", result.Message);
-        }
+        pendingBookingId = id;
+        modalAction = "accept";
+        modalTitle = "Confirmar Reserva";
+        modalMessage = "¿Estás seguro de que querés aceptar esta reserva? El cliente recibirá una notificación de confirmación.";
+        modalButtonText = "Aceptar Reserva";
+        modalButtonClass = "btn-success";
+        await confirmationModal.Show();
     }
 
     private async Task CancelBooking(Guid id)
     {
-        var confirmed = await JS.InvokeAsync<bool>("confirm", "¿Estás seguro de que querés cancelar esta reserva?");
-        if (!confirmed) return;
+        pendingBookingId = id;
+        modalAction = "cancel";
+        modalTitle = "Cancelar Reserva";
+        modalMessage = "¿Estás seguro de que querés cancelar esta reserva? Esta acción no se puede rehacer y se notificará al cliente.";
+        modalButtonText = "Cancelar Reserva";
+        modalButtonClass = "btn-danger";
+        await confirmationModal.Show();
+    }
 
-        var result = await DashboardService.CancelBookingAsync(id);
-        if (result.success)
+    private async Task StartBooking(Guid id)
+    {
+        pendingBookingId = id;
+        modalAction = "start";
+        modalTitle = "Iniciar Servicio";
+        modalMessage = "¿Estás seguro de que querés iniciar la prestación de este servicio ahora?";
+        modalButtonText = "Iniciar Servicio";
+        modalButtonClass = "btn-success";
+        await confirmationModal.Show();
+    }
+
+    private async Task FinishBooking(Guid id)
+    {
+        pendingBookingId = id;
+        modalAction = "finish";
+        modalTitle = "Finalizar Servicio";
+        modalMessage = "¿Estás seguro de que querés marcar este servicio como completado? Esto notificará al cliente.";
+        modalButtonText = "Finalizar Servicio";
+        modalButtonClass = "btn-primary";
+        await confirmationModal.Show();
+    }
+
+    private async Task HandleConfirm()
+    {
+        if (pendingBookingId == Guid.Empty || isProcessing) return;
+
+        isProcessing = true;
+        try
         {
-            await LoadBookings();
-            await OnStatusChanged.InvokeAsync();
+            ServiceResponse result;
+            if (modalAction == "accept")
+            {
+                result = await DashboardService.AcceptBookingAsync(pendingBookingId);
+                if (result.success) await JS.ToastrSuccess("Reserva aceptada correctamente");
+            }
+            else if (modalAction == "cancel")
+            {
+                result = await DashboardService.CancelBookingAsync(pendingBookingId);
+                if (result.success) await JS.ToastrSuccess("Reserva cancelada correctamente");
+            }
+            else if (modalAction == "start")
+            {
+                result = await DashboardService.StartBookingAsync(pendingBookingId);
+                if (result.success) await JS.ToastrSuccess("Servicio iniciado correctamente");
+            }
+            else // finish
+            {
+                result = await DashboardService.FinishBookingAsync(pendingBookingId);
+                if (result.success) await JS.ToastrSuccess("Servicio finalizado correctamente");
+            }
+
+            if (!result.success)
+            {
+                await JS.ToastrError(result.Message);
+            }
+            else
+            {
+                await LoadBookings();
+                await OnStatusChanged.InvokeAsync();
+                await confirmationModal.Hide();
+            }
         }
-        else
+        catch (Exception ex)
         {
-            await JS.InvokeVoidAsync("alert", result.Message);
+            await JS.ToastrError("Ocurrió un error inesperado");
+            Console.WriteLine(ex.Message);
+        }
+        finally
+        {
+            isProcessing = false;
         }
     }
 
-    private string GetStatusBadgeClass(string status)
+    private bool IsStatus(string? current, params string[] targets)
     {
-        return status.ToLower() switch
+        if (string.IsNullOrEmpty(current)) return false;
+        var c = current.ToLower();
+        return targets.Any(t => 
         {
-            "pending" or "pendiente" => "bg-warning text-dark",
-            "confirmed" or "confirmada" or "aceptada" => "bg-success",
-            "cancelled" or "cancelada" => "bg-danger",
-            "completed" or "completada" => "bg-info text-dark",
-            _ => "bg-secondary"
-        };
+            var target = t.ToLower();
+            if (target == "pending") return c == "pending" || c == "pendiente";
+            if (target == "confirmed") return c == "confirmed" || c == "confirmado";
+            if (target == "inprogress") return c == "inprogress" || c == "en curso";
+            if (target == "completed") return c == "completed" || c == "finalizado";
+            if (target == "canceled") return c == "canceled" || c == "cancelado";
+            return c == target;
+        });
     }
 }
+
+<ConfirmationModal @ref="confirmationModal" 
+                   Title="@modalTitle" 
+                   Message="@modalMessage" 
+                   ButtonText="@modalButtonText" 
+                   ButtonClass="@modalButtonClass"
+                   IsProcessing="@isProcessing"
+                   OnConfirm="HandleConfirm" />
 
 <style>
     .bg-soft-success {

@@ -12,5 +12,6 @@ namespace ClientLibrary.Models.ProfessionalLicense
         public string? Issuer { get; set; }
         public DateTime IssueDate { get; set; }
         public DateTime? ExpirationDate { get; set; }
+        public string? Image { get; set; }
     }
 }

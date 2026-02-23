@@ -1,0 +1,167 @@
+@page "/notificaciones"
+@using ClientLibrary.Models.Notifications
+@using ClientLibrary.Services.Contracts
+@using BlazorWasm.Shared.Components
+@inject INotificationService NotificationService
+@inject IHttpClientHelper HttpClientHelper
+@inject NavigationManager Navigation
+
+<PageTitle>Mis Notificaciones - ServicioAhora!</PageTitle>
+
+<div class="landing-page">
+    <main class="container py-5 mt-4">
+        <div class="row justify-content-center">
+            <div class="col-lg-8">
+                <div class="surface-card p-0 overflow-hidden shadow-sm border-0">
+                    <!-- Header -->
+                    <div class="p-4 bg-white border-bottom d-flex justify-content-between align-items-center">
+                        <div>
+                            <h3 class="mb-1 fw-bold text-dark">Centro de Notificaciones</h3>
+                            <p class="text-muted mb-0 small">Gestioná tus avisos y actualizaciones en tiempo real</p>
+                        </div>
+                        <div class="badge bg-success-subtle text-success rounded-pill px-3 py-2">
+                             @NotificationService.UnreadCount pendientes
+                        </div>
+                    </div>
+
+                    <!-- Filters & Actions -->
+                    <div class="px-3 py-2 bg-light border-bottom d-flex justify-content-between align-items-center">
+                        <div class="d-flex gap-2">
+                            <button class="btn btn-sm btn-filter @(currentFilter == FilterType.All ? "active" : "")" 
+                                    @onclick="() => SetFilter(FilterType.All)">Todas</button>
+                            <button class="btn btn-sm btn-filter @(currentFilter == FilterType.Unread ? "active" : "")" 
+                                    @onclick="() => SetFilter(FilterType.Unread)">No leídas</button>
+                        </div>
+                        @if (NotificationService.UnreadCount > 0)
+                        {
+                            <button class="btn btn-link btn-sm text-decoration-none text-success fw-bold" @onclick="MarkAllRead" disabled="@isMarkingRead">
+                                @if (isMarkingRead)
+                                {
+                                    <span class="spinner-border spinner-border-sm me-1" role="status"></span>
+                                }
+                                <i class="fa-solid fa-check-double me-1"></i>Marcar todas leídas
+                            </button>
+                        }
+                    </div>
+
+                    <!-- List -->
+                    <div class="notification-list">
+                        @if (isLoading)
+                        {
+                            <div class="text-center py-5">
+                                <div class="spinner-border text-success" role="status"></div>
+                                <p class="mt-2 text-muted">Cargando...</p>
+                            </div>
+                        }
+                        else if (!FilteredNotifications.Any())
+                        {
+                            <div class="text-center py-5">
+                                <i class="fa-regular fa-bell-slash fa-3x text-muted mb-3"></i>
+                                <h5 class="text-muted">No tenés notificaciones @(currentFilter == FilterType.Unread ? "pendientes" : "")</h5>
+                                <p class="small text-muted px-4">Cuando ocurra algo importante te avisaremos por aquí.</p>
+                            </div>
+                        }
+                        else
+                        {
+                            foreach (var notif in FilteredNotifications)
+                            {
+                                <NotificationItem Notification="notif" OnRead="HandleNotificationRead" />
+                            }
+                        }
+                    </div>
+
+                    <!-- Footer -->
+                    <div class="p-3 bg-white border-top text-center">
+                        <button class="btn btn-link text-success text-decoration-none fw-semibold btn-sm" @onclick="GoBack">
+                            <i class="fa-solid fa-arrow-left me-2"></i>Volver
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+</div>
+
+<style>
+    .surface-card {
+        background: white;
+        border-radius: 1.25rem;
+    }
+    .btn-filter {
+        border-radius: 0.5rem;
+        font-weight: 500;
+        color: #6c757d;
+        border: 1px solid transparent;
+        transition: all 0.2s;
+    }
+    .btn-filter:hover {
+        background: #e9ecef;
+    }
+    .btn-filter.active {
+        background: #4a7c59;
+        color: white;
+    }
+    .notification-list {
+        min-height: 400px;
+    }
+    .bg-success-subtle {
+        background-color: rgba(74, 124, 89, 0.1);
+    }
+</style>
+
+@code {
+    private enum FilterType { All, Unread }
+    private FilterType currentFilter = FilterType.All;
+    private bool isLoading = true;
+    private bool isMarkingRead = false;
+    private string? _userId;
+
+    private IEnumerable<Notification> FilteredNotifications => currentFilter switch
+    {
+        FilterType.Unread => NotificationService.Notifications.Where(n => !n.IsRead),
+        _ => NotificationService.Notifications
+    };
+
+    protected override async Task OnInitializedAsync()
+    {
+        NotificationService.OnChange += StateHasChanged;
+        
+        _userId = await HttpClientHelper.GetUserIdAsync();
+        if (!string.IsNullOrEmpty(_userId))
+        {
+            await NotificationService.LoadInitialNotifications(_userId);
+        }
+        
+        isLoading = false;
+    }
+
+    private void SetFilter(FilterType filter) => currentFilter = filter;
+
+    private async Task MarkAllRead()
+    {
+        if (string.IsNullOrEmpty(_userId) || isMarkingRead) return;
+
+        isMarkingRead = true;
+        try
+        {
+            await NotificationService.MarkAllsReadAsync(_userId);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error marking all as read: {ex.Message}");
+        }
+        finally
+        {
+            isMarkingRead = false;
+        }
+    }
+
+    private void HandleNotificationRead(Guid id) => StateHasChanged();
+
+    private void GoBack() => Navigation.NavigateTo("/");
+
+    public void Dispose()
+    {
+        NotificationService.OnChange -= StateHasChanged;
+    }
+}

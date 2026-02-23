@@ -1,6 +1,9 @@
 @attribute [Route(RouteConstants.ServiceDetailPage)]
 @using ClientLibrary.Helper
 @inject NavigationManager Navigation
+@inject IBookingService BookingService
+@inject AuthenticationStateProvider AuthStateProvider
+@inject IJSRuntime JS
 
 <PageTitle>Servicio - ServicioAhora!</PageTitle>
 
@@ -35,7 +38,7 @@
                             @if (Service.EstimatedDuration > 0)
                             {
                                 <div class="pill">
-                                    <i class="fa-regular fa-clock me-2"></i>@Service.EstimatedDuration horas aprox.
+                                    <i class="fa-regular fa-clock me-2"></i>@Service.EstimatedDuration min. aprox.
                                 </div>
                             }
                         </div>
@@ -116,11 +119,12 @@
                     </div>
                     <div class="modal-body">
                         <p class="mb-1">Servicio: <strong>@Service?.Name</strong></p>
-                        <p class="text-muted small mb-3">Duración estimada: @(Service?.EstimatedDuration) horas</p>
+                        <p class="text-muted small mb-3">Duración estimada: @(Service?.EstimatedDuration) minutos</p>
                         
                         <!-- Calendar Component -->
                         <TimeSlotPicker ProfessionalId="@Service.ProfessionalId.ToString()" 
-                                       DurationMinutes="@((int)(Service.EstimatedDuration * 60))" 
+                                       ServiceId="@Service.Id"
+                                       DurationMinutes="@((int)(Service.EstimatedDuration))" 
                                        OnSlotSelected="OnTimeSlotSelected" />
                         
                         @if (SelectedAppointmentTime.HasValue)
@@ -132,11 +136,19 @@
                         }
                     </div>
                     <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary" @onclick="CloseBookingModal">Cancelar</button>
+                        <button type="button" class="btn btn-secondary" @onclick="CloseBookingModal" disabled="@isConfirming">Cancelar</button>
                         <button type="button" class="btn btn-primary" 
-                                disabled="@(!SelectedAppointmentTime.HasValue)"
+                                disabled="@(!SelectedAppointmentTime.HasValue || isConfirming)"
                                 @onclick="ConfirmBooking">
-                            Confirmar Reserva
+                            @if (isConfirming)
+                            {
+                                <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+                                <span>Enviando...</span>
+                            }
+                            else
+                            {
+                                <span>Confirmar Reserva</span>
+                            }
                         </button>
                     </div>
                 </div>
@@ -146,23 +158,8 @@
     </main>
 
 
-
-    @if (showSuccessMessage)
-    {
-        <div class="toast-container position-fixed bottom-0 end-0 p-3">
-            <div class="toast show align-items-center text-bg-success border-0" role="alert" aria-live="assertive" aria-atomic="true">
-                <div class="d-flex">
-                    <div class="toast-body">
-                        <i class="fa-solid fa-check-circle me-2"></i> @successMessageText
-                    </div>
-                    <button type="button" class="btn-close btn-close-white me-2 m-auto" @onclick="CloseSuccessMessage" aria-label="Close"></button>
-                </div>
-            </div>
-        </div>
-    }
-
-
 </div>
+
 
 @code {
     [Parameter]
@@ -206,13 +203,20 @@
     private void BackToSearch() => Navigation.NavigateTo(RouteConstants.Search);
 
     private bool showBookingModal = false;
-    private bool showSuccessMessage = false;
-    private string successMessageText = "Solicitud enviada con éxito.";
+    private bool isConfirming = false;
     
     private DateTime? SelectedAppointmentTime { get; set; }
 
-    private void ShowBookingModal()
+    private async Task ShowBookingModal()
     {
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        if (!authState.User.Identity?.IsAuthenticated ?? true)
+        {
+            await JS.ToastrInfo("Iniciá sesión para realizar una reserva");
+            Navigation.NavigateTo(RouteConstants.Login);
+            return;
+        }
+
         showBookingModal = true;
         SelectedAppointmentTime = null;
     }
@@ -227,24 +231,69 @@
         SelectedAppointmentTime = slot;
     }
 
-    private void ConfirmBooking()
+    private async Task ConfirmBooking()
     {
-        if (SelectedAppointmentTime.HasValue)
+        if (SelectedAppointmentTime.HasValue && Service != null)
         {
-            showBookingModal = false;
-            successMessageText = $"Turno reservado para el {SelectedAppointmentTime.Value.ToString("d/M HH:mm")}. ¡Te esperamos!";
-            showSuccessMessage = true;
-            
-            Task.Delay(5000).ContinueWith(_ => 
-            {
-                 showSuccessMessage = false;
-                 InvokeAsync(StateHasChanged);
-            });
-        }
-    }
+            isConfirming = true;
+            StateHasChanged();
 
-    private void CloseSuccessMessage()
-    {
-        showSuccessMessage = false;
+            try
+            {
+                var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+                if (!authState.User.Identity?.IsAuthenticated ?? true)
+                {
+                    Navigation.NavigateTo(RouteConstants.Login);
+                    return;
+                }
+
+                var customerId = authState.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value 
+                                 ?? authState.User.FindFirst("nameid")?.Value;
+
+                if (string.IsNullOrEmpty(customerId))
+                {
+                    await JS.ToastrError("No se pudo obtener tu ID de usuario. Reintentá iniciando sesión.");
+                    Navigation.NavigateTo(RouteConstants.Login);
+                    return;
+                }
+
+                var createModel = new CreateBooking
+                {
+                    ProfessionalId = Service.ProfessionalId.ToString(),
+                    CustomerId = customerId,
+                    Date = SelectedAppointmentTime.Value,
+                    Details = new List<CreateBookingDetailDto>
+                    {
+                        new CreateBookingDetailDto
+                        {
+                            ServiceOfferingId = Service.Id,
+                            Quantity = 1,
+                            ServiceCategory = Service.CategoryName,
+                            UnitPrice = Service.BasePrice
+                        }
+                    }
+                };
+
+                var response = await BookingService.CreateBookingAsync(createModel);
+                if (response.success)
+                {
+                    showBookingModal = false;
+                    await JS.ToastrSuccess($"¡Reserva enviada! Turno solicitado para el {SelectedAppointmentTime.Value.ToString("dddd d/M HH:mm", LocalCulture)}. Te avisaremos cuando el profesional confirme.");
+                }
+                else
+                {
+                    await JS.ToastrError(response.Message);
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error al confirmar reserva: {ex.Message}");
+                await JS.ToastrError("Ocurrió un error al enviar la reserva. Intentá de nuevo.");
+            }
+            finally
+            {
+                isConfirming = false;
+            }
+        }
     }
 }

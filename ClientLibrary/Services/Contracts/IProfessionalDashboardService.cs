@@ -8,6 +8,7 @@ using ClientLibrary.Models.Booking;
 using ClientLibrary.Models.Category;
 using ClientLibrary.Models.ProfessionalCat;
 using ClientLibrary.Models.ServicioAhora.ServOffering;
+using ClientLibrary.Models.ProfessionalLicense;
 
 namespace ClientLibrary.Services.Contracts;
 
@@ -33,13 +34,16 @@ public interface IProfessionalDashboardService
     Task<ServiceResponse> SetDailyAvailabilityAsync(BatchAvailabilityDto request);
     Task<ServiceResponse> RemoveAvailabilityAsync(Guid id);
 
-    // Certification Management
-    Task<List<CertificationModel>> GetCertificationsAsync();
-    Task<ServiceResponse> AddCertificationAsync(CertificationModel certification);
-    Task<ServiceResponse> RemoveCertificationAsync(Guid id);
+    // Certification/License Management
+    Task<List<GetProfessionalLicense>> GetLicensesAsync(string professionalId);
+    Task<ServiceResponse> AddLicenseAsync(CreateProfessionalLicense license);
+    Task<ServiceResponse> UpdateLicenseAsync(UpdateProfessionalLicense license);
+    Task<ServiceResponse> RemoveLicenseAsync(Guid id);
 
     // Booking Management
-    Task<ServiceResponse<IEnumerable<BookingDto>>> GetBookingsAsync(string professionalId);
+    Task<List<GetBooking>> GetBookingsAsync(string professionalId);
     Task<ServiceResponse> AcceptBookingAsync(Guid bookingId);
     Task<ServiceResponse> CancelBookingAsync(Guid bookingId);
+    Task<ServiceResponse> StartBookingAsync(Guid bookingId);
+    Task<ServiceResponse> FinishBookingAsync(Guid bookingId);
 }

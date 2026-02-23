@@ -1,0 +1,177 @@
+@using ClientLibrary.Models.Authentication
+@using ClientLibrary.Models
+@using ClientLibrary.Services.Contracts
+@using BlazorWasm.Shared.Components
+@inject IJSRuntime js
+@inject IAuthenticationService AuthenticationService
+
+<div class="surface-card">
+    <div class="section-heading flex-column flex-lg-row">
+        <div>
+            <p class="text-uppercase text-muted small mb-1">Tu Cuenta</p>
+            <h3 class="mb-0">Información Personal</h3>
+        </div>
+        <div>
+            <button class="btn btn-outline-primary" @onclick="OpenUpdateModal">
+                <i class="fa-solid fa-user-pen me-2"></i>Editar Datos
+            </button>
+        </div>
+    </div>
+
+    <div class="row g-4 mt-2">
+        <div class="col-lg-auto text-center text-lg-start">
+            <StaffAvatar ImageUrl="@User.ProfileImage" Name="@User.FullName" Size="xl" />
+        </div>
+        <div class="col-lg">
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <label class="form-label text-muted small fw-bold text-uppercase">Nombre completo</label>
+                    <div class="h5 mb-0">@User.FullName</div>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label text-muted small fw-bold text-uppercase">Correo electrónico</label>
+                    <div class="h5 mb-0">@User.Email</div>
+                    <span class="badge bg-success-subtle text-success mt-1 small">Verificado</span>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label text-muted small fw-bold text-uppercase">Teléfono</label>
+                    <div class="h5 mb-0">@(string.IsNullOrEmpty(User.PhoneNumber) ? "No especificado" : User.PhoneNumber)</div>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label text-muted small fw-bold text-uppercase">Rol de usuario</label>
+                    <div><span class="badge bg-light text-dark border">@User.Role</span></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@if (showUpdateModal)
+{
+    <div class="modal fade show d-block" tabindex="-1" style="background-color: rgba(0,0,0,0.5); z-index: 1050;">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-0 shadow-lg">
+                <div class="modal-header">
+                    <h5 class="modal-title fw-bold">Actualizar Datos Personales</h5>
+                    <button type="button" class="btn-close" @onclick="CloseUpdateModal"></button>
+                </div>
+                <div class="modal-body p-4">
+                    <div class="text-center mb-4">
+                        <div class="position-relative d-inline-block">
+                            <StaffAvatar ImageUrl="@EditModel.ProfileImage" Name="@EditModel.FullName" Size="xl" />
+                            <label for="profileUploadEdit" class="position-absolute bottom-0 end-0 btn btn-primary rounded-circle p-0 d-flex align-items-center justify-content-center border-white border-2" style="width: 42px; height: 42px; cursor: pointer; transform: translate(10%, 10%);">
+                                <i class="fa-solid fa-camera"></i>
+                            </label>
+                            <InputFile OnChange="OnInputFileChange" id="profileUploadEdit" class="d-none" accept=".jpg, .jpeg, .png" />
+                        </div>
+                        <p class="text-muted small mt-3">Haz clic en la cámara para subir una nueva foto</p>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Nombre completo</label>
+                        <input type="text" class="form-control" @bind="EditModel.FullName" placeholder="Tu nombre" />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Teléfono</label>
+                        <input type="tel" class="form-control" @bind="EditModel.PhoneNumber" placeholder="Ej: 11 4444 9999" />
+                    </div>
+                </div>
+                <div class="modal-footer bg-light p-3">
+                    <button type="button" class="btn btn-link text-muted text-decoration-none px-4" @onclick="CloseUpdateModal">Cancelar</button>
+                    <button type="button" class="btn btn-primary px-4 shadow-sm" @onclick="UpdateProfile" disabled="@isSubmitting">
+                        @if (isSubmitting)
+                        {
+                            <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+                            <span>Guardando...</span>
+                        }
+                        else
+                        {
+                            <span>Guardar cambios</span>
+                        }
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter, EditorRequired] public UserDto User { get; set; } = default!;
+    [Parameter] public EventCallback OnProfileUpdated { get; set; }
+
+    private UserUpdate EditModel { get; set; } = new();
+    private bool showUpdateModal = false;
+    private bool isSubmitting = false;
+
+    private void OpenUpdateModal()
+    {
+        EditModel = new UserUpdate
+        {
+            Id = User.Id,
+            FullName = User.FullName,
+            PhoneNumber = User.PhoneNumber ?? "",
+            ProfileImage = User.ProfileImage
+        };
+        showUpdateModal = true;
+    }
+
+    private void CloseUpdateModal()
+    {
+        showUpdateModal = false;
+    }
+
+    private async Task UpdateProfile()
+    {
+        if (string.IsNullOrWhiteSpace(EditModel.FullName))
+        {
+            await js.ToastrError("El nombre es obligatorio");
+            return;
+        }
+
+        isSubmitting = true;
+        try
+        {
+            var response = await AuthenticationService.UpdateUser(EditModel);
+            if (response.success)
+            {
+                await OnProfileUpdated.InvokeAsync();
+                showUpdateModal = false;
+                await js.ToastrSuccess("Perfil actualizado correctamente");
+            }
+            else
+            {
+                await js.ToastrError(response.Message);
+            }
+        }
+        catch (Exception ex)
+        {
+            await js.ToastrError("Error inesperado al actualizar el perfil");
+            Console.WriteLine(ex.Message);
+        }
+        finally
+        {
+            isSubmitting = false;
+        }
+    }
+
+    private async Task OnInputFileChange(InputFileChangeEventArgs e)
+    {
+        try
+        {
+            var file = e.File;
+            if (file != null)
+            {
+                var resizedFile = await file.RequestImageFileAsync(file.ContentType, 400, 400);
+                var buffer = new byte[resizedFile.Size];
+                await resizedFile.OpenReadStream(1024 * 1024 * 5).ReadAsync(buffer);
+                var base64 = Convert.ToBase64String(buffer);
+                EditModel.ProfileImage = $"data:{file.ContentType};base64,{base64}";
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error uploading image: {ex.Message}");
+            await js.ToastrError("Error al procesar la imagen");
+        }
+    }
+}

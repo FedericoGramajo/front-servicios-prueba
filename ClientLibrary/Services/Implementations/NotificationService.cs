@@ -73,8 +73,9 @@ namespace ClientLibrary.Services.Implementations
             var apiCall = new ApiCall
             {
                 Route = Constant.Notification.MarkAsRead,
-                Type = Constant.ApiCallType.Post,
-                Client = client
+                Type = Constant.ApiCallType.Update,
+                Client = client,
+                Model = null!
             };
             apiCall.ToString(id);
             var result = await apiHelper.ApiCallTypeCall<Dummy>(apiCall);
@@ -92,7 +93,30 @@ namespace ClientLibrary.Services.Implementations
             
             return response ?? new ServiceResponse(false, "El servidor devolvió un error inesperado al marcar la notificación como leída");
         }
+        public async Task<ServiceResponse> MarkAllsReadAsync(string userId)
+        {
+            var client = await httpClient.GetPrivateClientAsync();
+            var apiCall = new ApiCall
+            {
+                Route = Constant.Notification.MarkAllAsRead,
+                Type = Constant.ApiCallType.Update,
+                Client = client
+            };
+            apiCall.ToString(userId);
+            var result = await apiHelper.ApiCallTypeCall<Dummy>(apiCall);
+            var response = result == null ? apiHelper.ConnectionError() : await apiHelper.GetServiceResponse<ServiceResponse>(result);
 
+            if (response != null && response.success)
+            {
+                foreach (var notification in _notifications.Where(n => !n.IsRead))
+                {
+                    notification.IsRead = true;
+                }
+                NotifyStateChanged();
+            }
+
+            return response ?? new ServiceResponse(false, "El servidor devolvió un error inesperado al marcar las notificaciones como leídas");
+        }
         private void NotifyStateChanged() => OnChange?.Invoke();
     }
 }

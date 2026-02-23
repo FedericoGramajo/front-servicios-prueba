@@ -13,4 +13,5 @@ public class Notification
     
     public Guid? ReferenceId { get; set; } 
     public string? ReferenceType { get; set; } 
+    public string? ActionUrl { get; set; }
 }

@@ -1,4 +1,7 @@
+@using ClientLibrary.Models
 @using ClientLibrary.Models.Landing
+@using ClientLibrary.Models.ProfessionalLicense
+@using ClientLibrary.Models.ProfessionalCat
 @using ClientLibrary.Services.Contracts
 @using System.Globalization
 @inject IProfessionalDashboardService DashboardService
@@ -10,94 +13,155 @@
             <h5 class="mb-1">Tus certificaciones</h5>
             <p class="text-muted small mb-0">Subí tus licencias y cursos para aumentar la confianza de los clientes.</p>
         </div>
-        <button class="btn btn-outline-primary btn-sm" @onclick="AddCertificationStub">
-            <i class="fa-solid fa-cloud-arrow-up me-2"></i> Subir certificado
+        <button class="btn btn-outline-primary btn-sm" @onclick="ShowAddModal">
+            <i class="fa-solid fa-plus me-2"></i> Agregar licencia
         </button>
     </div>
     <div class="list-group list-group-flush">
-        @if (Certifications == null)
+        @foreach (var lic in Licenses)
         {
-             <div class="text-center py-3">
-                <div class="spinner-border text-primary" role="status">
-                    <span class="visually-hidden">Cargando...</span>
-                </div>
-            </div>
-        }
-        else if (!Certifications.Any())
-        {
-            <div class="text-center py-3 text-muted">
-                No tenés certificaciones cargadas aún.
-            </div>
-        }
-        else
-        {
-            @foreach (var cert in Certifications)
-            {
-                <div class="list-group-item px-0 d-flex justify-content-between align-items-center">
-                    <div class="d-flex align-items-center gap-3">
-                        @if (cert.Type == "PDF")
+            <div class="list-group-item px-0 d-flex justify-content-between align-items-center">
+                <div class="d-flex align-items-center gap-3">
+                    <div class="license-icon-wrapper">
+                        @if (!string.IsNullOrEmpty(lic.Image))
                         {
-                            <i class="fa-solid fa-file-pdf text-danger fa-2x"></i>
+                            <img src="@lic.Image" alt="Licencia" class="rounded shadow-sm" style="width: 48px; height: 48px; object-fit: cover;" />
                         }
                         else
                         {
-                             <i class="fa-solid fa-file-image text-primary fa-2x"></i>
+                            <div class="bg-light rounded d-flex align-items-center justify-content-center" style="width: 48px; height: 48px;">
+                                <i class="fa-solid fa-file-contract text-secondary fs-4"></i>
+                            </div>
                         }
-                        <div>
-                            <h6 class="mb-0">@cert.Name</h6>
-                            @if (cert.Status == "Verificado")
+                    </div>
+                    <div>
+                        <h6 class="mb-0">@lic.Number - @lic.Issuer</h6>
+                        <div class="d-flex flex-wrap gap-2 mt-1">
+                            <span class="badge bg-primary-subtle text-primary border border-primary-subtle">@lic.CategoryName</span>
+                            <small class="text-muted"><i class="fa-solid fa-calendar-day me-1"></i> Emitido: @lic.IssueDate.ToString("dd/MM/yyyy")</small>
+                            @if (lic.ExpirationDate.HasValue)
                             {
-                                <small class="text-success"><i class="fa-solid fa-check-circle me-1"></i> Verificado @(cert.VerifiedDate.HasValue ? "el " + cert.VerifiedDate.Value.ToString("dd/MM/yyyy") : "")</small>
-                            }
-                            else if (cert.Status == "Rechazado")
-                            {
-                                <small class="text-danger"><i class="fa-solid fa-circle-xmark me-1"></i> Rechazado</small>
-                            }
-                            else
-                            {
-                                <small class="text-warning"><i class="fa-solid fa-clock me-1"></i> Pendiente de revisión</small>
+                                <small class="text-muted"><i class="fa-solid fa-calendar-xmark me-1"></i> Vence: @lic.ExpirationDate.Value.ToString("dd/MM/yyyy")</small>
                             }
                         </div>
                     </div>
-                    <button class="btn btn-link text-muted" @onclick="() => RemoveCertification(cert.Id)"><i class="fa-solid fa-trash"></i></button>
                 </div>
-            }
+                <div class="d-flex gap-2">
+                    <button class="btn btn-outline-secondary btn-sm" @onclick="() => ShowEditModal(lic)">
+                        <i class="fa-solid fa-pen"></i>
+                    </button>
+                    <button class="btn btn-outline-danger btn-sm" @onclick="() => PrepareDelete(lic.Id)">
+                        <i class="fa-solid fa-trash"></i>
+                    </button>
+                </div>
+            </div>
         }
     </div>
 </div>
 
+
+<LicenseFormModal @ref="FormModal" Categories="Categories" OnSave="HandleSave" />
+<BlazorWasm.Shared.Components.ConfirmationModal @ref="DeleteModal" 
+    Title="Eliminar Licencia" 
+    Message="¿Estás seguro de que querés eliminar esta licencia? Esta acción no se puede deshacer."
+    OnConfirm="ConfirmDelete" />
+
 @code {
-    private List<CertificationModel>? Certifications { get; set; }
+    [Parameter] public string ProfessionalId { get; set; } = string.Empty;
+    [Parameter] public List<GetProfessionalCategory> Categories { get; set; } = new();
+
+    private List<GetProfessionalLicense> Licenses { get; set; } = new();
+    private LicenseFormModal FormModal = default!;
+    private BlazorWasm.Shared.Components.ConfirmationModal DeleteModal = default!;
+    private Guid SelectedId { get; set; }
 
     protected override async Task OnInitializedAsync()
     {
-        await LoadCertifications();
+        await LoadLicenses();
     }
 
-    private async Task LoadCertifications()
+    private async Task LoadLicenses()
     {
-        Certifications = await DashboardService.GetCertificationsAsync();
-    }
-
-    private async Task RemoveCertification(Guid id)
-    {
-        if (await JS.InvokeAsync<bool>("confirm", "¿Estás seguro de que querés eliminar esta certificación?"))
+        if (!string.IsNullOrEmpty(ProfessionalId))
         {
-            var response = await DashboardService.RemoveCertificationAsync(id);
-            if (response.success)
-            {
-                await JS.ToastrSuccess("Certificación eliminada");
-                await LoadCertifications();
-            }
-            else
-            {
-                await JS.ToastrError(response.Message);
-            }
+            Licenses = await DashboardService.GetLicensesAsync(ProfessionalId);
         }
     }
 
-    private async Task AddCertificationStub()
+    private void ShowAddModal()
     {
-        await JS.ToastrInfo("Funcionalidad de carga en desarrollo (Backend integration needed for multipart upload)");
+        FormModal.Show(null, ProfessionalId);
+    }
+
+    private void ShowEditModal(GetProfessionalLicense lic)
+    {
+        FormModal.Show(lic);
+    }
+
+    private async Task HandleSave(bool isEdit)
+    {
+        var modelVM = FormModal.GetModel();
+        ServiceResponse response;
+
+        if (isEdit)
+        {
+            var updateModel = new UpdateProfessionalLicense
+            {
+                Id = modelVM.Id,
+                Number = modelVM.Number,
+                Issuer = modelVM.Issuer,
+                IssueDate = modelVM.IssueDate,
+                ExpirationDate = modelVM.ExpirationDate,
+                CategoryId = modelVM.CategoryId,
+                Image = modelVM.Image
+            };
+            response = await DashboardService.UpdateLicenseAsync(updateModel);
+        }
+        else
+        {
+            var createModel = new CreateProfessionalLicense
+            {
+                Number = modelVM.Number,
+                Issuer = modelVM.Issuer,
+                IssueDate = modelVM.IssueDate,
+                ExpirationDate = modelVM.ExpirationDate,
+                CategoryId = modelVM.CategoryId,
+                ProfessionalId = modelVM.ProfessionalId,
+                Image = modelVM.Image
+            };
+            response = await DashboardService.AddLicenseAsync(createModel);
+        }
+
+        if (response.success)
+        {
+            await JS.ToastrSuccess("Licencia guardada correctamente");
+            await FormModal.Hide();
+            await LoadLicenses();
+        }
+        else
+        {
+            await JS.ToastrError(response.Message);
+        }
+    }
+
+    private async Task PrepareDelete(Guid id)
+    {
+        SelectedId = id;
+        await DeleteModal.Show();
+    }
+
+    private async Task ConfirmDelete()
+    {
+        var response = await DashboardService.RemoveLicenseAsync(SelectedId);
+        if (response.success)
+        {
+            await JS.ToastrSuccess("Licencia eliminada");
+            await DeleteModal.Hide();
+            await LoadLicenses();
+        }
+        else
+        {
+            await JS.ToastrError(response.Message);
+        }
     }
 }

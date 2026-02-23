@@ -36,11 +36,11 @@
                 <img src="images/logoServioAhoraChico.png" alt="@Brand" class="d-md-none" style="height: 40px; object-fit: contain;" />
             </a>
             
-            <form class="search-bar flex-grow-1 mx-1 mx-lg-3" role="search" @onsubmit="OnSearch" @onsubmit:preventDefault>
+            <form class="search-bar flex-grow-1 mx-0 mx-md-1 mx-lg-3" role="search" @onsubmit="OnSearch" @onsubmit:preventDefault>
                 <div class="input-group rounded-pill overflow-hidden align-items-center" style="background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.25); height: 46px;">
-                    <span class="input-group-text bg-transparent border-0 ps-3" style="color: rgba(255,255,255,0.6);"><i class="fa-solid fa-magnifying-glass"></i></span>
-                    <input class="form-control border-0 bg-transparent shadow-none text-white px-2" type="search" placeholder="@Search.Placeholder" aria-label="Buscar" @bind="searchTerm" style="color: white; height: 100%; outline: none;" />
-                    <button class="btn px-4 rounded-pill m-1 fw-semibold d-flex align-items-center justify-content-center" type="submit" style="background-color: white; color: #4a7c59; height: 36px; min-width: 100px;">
+                    <span class="input-group-text bg-transparent border-0 ps-2 ps-md-3" style="color: rgba(255,255,255,0.6);"><i class="fa-solid fa-magnifying-glass"></i></span>
+                    <input class="form-control border-0 bg-transparent shadow-none text-white px-1 px-md-2" type="search" placeholder="@Search.Placeholder" aria-label="Buscar" @bind="searchTerm" style="color: white; height: 100%; outline: none; font-size: 0.9rem;" />
+                    <button class="btn px-2 px-md-4 rounded-pill m-1 fw-semibold d-flex align-items-center justify-content-center" type="submit" style="background-color: white; color: #4a7c59; height: 36px; min-width: auto;">
                         <span class="d-none d-md-inline">@Search.ButtonText</span>
                         <i class="fa-solid fa-magnifying-glass d-md-none"></i>
                     </button>
@@ -65,21 +65,14 @@
                             <ul class="dropdown-menu dropdown-menu-end shadow border-0 mt-2" aria-labelledby="notifMenu" style="width: 300px; max-height: 400px; overflow-y: auto;">
                                 <li class="dropdown-header d-flex justify-content-between align-items-center bg-light py-2">
                                     <span class="fw-bold">Notificaciones</span>
-                                    @if (NotificationState.UnreadCount > 0)
-                                    {
-                                        <button class="btn btn-link btn-sm text-decoration-none p-0" @onclick="MarkAllRead">Marcar leídas</button>
-                                    }
+                                    <a class="text-decoration-none small fw-bold text-success" href="@RouteConstants.MyNotifications">Ver todas</a>
                                 </li>
                                 @if (NotificationState.Notifications.Any())
                                 {
-                                    @foreach (var notif in NotificationState.Notifications)
+                                    @foreach (var notif in NotificationState.Notifications.Take(5))
                                     {
                                          <li>
-                                            <a class="dropdown-item text-wrap py-2 border-bottom @(notif.IsRead ? "text-muted" : "fw-bold")" href="#" @onclick="() => ReadNotification(notif.Id)">
-                                                <small class="d-block text-success mb-1">@notif.Title</small>
-                                                <span class="d-block text-truncate" style="max-width: 250px;">@notif.Message</span>
-                                                <div class="text-end mt-1"><small class="opacity-50" style="font-size: 0.7rem;">@notif.CreatedAt.ToString("g")</small></div>
-                                            </a>
+                                            <NotificationItem Notification="notif" OnRead="StateHasChanged" />
                                         </li>
                                     }
                                 }
@@ -198,16 +191,30 @@
     public IReadOnlyList<NavLinkModel> NavLinks { get; set; } = Array.Empty<NavLinkModel>();
 
     private string searchTerm = string.Empty;
+    private System.Threading.Timer? _timer;
+    private string? _currentUserId;
 
     protected override async Task OnInitializedAsync()
     {
         CartState.OnChange += StateHasChanged;
         NotificationState.OnChange += StateHasChanged;
 
-        var userId = await HttpClientHelper.GetUserIdAsync();
-        if (!string.IsNullOrEmpty(userId))
+        _currentUserId = await HttpClientHelper.GetUserIdAsync();
+        if (!string.IsNullOrEmpty(_currentUserId))
         {
-            await NotificationState.LoadInitialNotifications(userId);
+            await NotificationState.LoadInitialNotifications(_currentUserId);
+            
+            // Iniciar polling cada 30 segundos
+            _timer = new System.Threading.Timer(async _ => 
+            {
+                await InvokeAsync(async () => 
+                {
+                    if (!string.IsNullOrEmpty(_currentUserId))
+                    {
+                        await NotificationState.LoadInitialNotifications(_currentUserId);
+                    }
+                });
+            }, null, TimeSpan.FromSeconds(30), TimeSpan.FromSeconds(30));
         }
     }
 
@@ -215,18 +222,20 @@
     {
         CartState.OnChange -= StateHasChanged;
         NotificationState.OnChange -= StateHasChanged;
+        _timer?.Dispose();
     }
 
-    private async Task ReadNotification(Guid id)
+    private async Task ReadNotification(Guid idNotification)
     {
-        await NotificationState.MarkAsReadAsync(id);
+        await NotificationState.MarkAsReadAsync(idNotification);
     }
     
-    private void MarkAllRead()
+    private async Task MarkAllRead()
     {
-        // El backend no provee un endpoint de "marcar todas" por ahora,
-        // pero podemos implementar un bucle local si es necesario o dejarlo para un futuro.
-        // Por ahora lo deshabilitamos o marcamos una por una si la lista es corta.
+        if (!string.IsNullOrEmpty(_currentUserId))
+        {
+            await NotificationState.MarkAllsReadAsync(_currentUserId);
+        }
     }
 
     private void OnSearch()

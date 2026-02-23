@@ -1,115 +1,144 @@
 @using System.Globalization
 @using ClientLibrary.Models.Booking
-@using ClientLibrary.Services
-@using ClientLibrary.Services.Implementations
+@using ClientLibrary.Services.Contracts
 
 <div class="time-slot-picker">
-    <div class="mb-3">
-        <label class="form-label fw-bold">Seleccioná una fecha</label>
-        <div class="d-flex gap-2 overflow-auto pb-2" style="scrollbar-width: thin;">
-            @for (int i = 0; i < 14; i++)
-            {
-                var date = DateTime.Today.AddDays(i);
-                var isSelected = date.Date == SelectedDate.Date;
-                var available = IsDateAvailable(date);
-                
-                <button class="btn @(isSelected ? "btn-primary" : "btn-outline-secondary") flex-shrink-0 text-center" 
-                        style="min-width: 80px;"
-                        disabled="@(!available)"
-                        @onclick="() => SelectDate(date)">
-                    <div class="small text-uppercase">@date.ToString("ddd", LocalCulture)</div>
-                    <div class="fw-bold fs-5">@date.Day</div>
-                </button>
-            }
-        </div>
-    </div>
-
-    @if (IsLoading)
+    @if (IsLoadingDays)
     {
         <div class="text-center py-3">
             <div class="spinner-border text-primary spinner-border-sm" role="status"></div>
-            <span class="ms-2">Cargando horarios...</span>
+            <span class="ms-2">Consultando disponibilidad...</span>
         </div>
     }
-    else if (AvailableSlots.Any())
+    else if (!AvailableDays.Any())
     {
-        <div class="mb-3">
-            <label class="form-label fw-bold">Horarios disponibles</label>
-            <div class="d-grid gap-2" style="grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));">
-                @foreach (var slot in AvailableSlots)
-                {
-                    <button class="btn @(slot == SelectedSlot ? "btn-success" : "btn-outline-primary") btn-sm"
-                            @onclick="() => SelectSlot(slot)">
-                        @slot.ToString("HH:mm")
-                    </button>
-                }
-            </div>
+        <div class="alert alert-warning text-center">
+            <i class="fa-solid fa-calendar-xmark me-2"></i>No hay días con disponibilidad en los próximos 14 días.
         </div>
     }
     else
     {
-        <div class="alert alert-light border text-center">
-            <small class="text-muted">No hay horarios disponibles para esta fecha.</small>
+        <div class="mb-3">
+            <label class="form-label fw-bold">Seleccioná una fecha</label>
+            <div class="d-flex gap-2 overflow-auto pb-2" style="scrollbar-width: thin;">
+                @foreach (var date in AvailableDays)
+                {
+                    var isSelected = date.Date == SelectedDate?.Date;
+
+                    <button class="btn @(isSelected ? "btn-primary" : "btn-outline-secondary") flex-shrink-0 text-center" 
+                            style="min-width: 80px;"
+                            @onclick="() => SelectDate(date)">
+                        <div class="small text-uppercase">@date.ToString("ddd", LocalCulture)</div>
+                        <div class="fw-bold fs-5">@date.Day</div>
+                    </button>
+                }
+            </div>
         </div>
+
+        @if (SelectedDate.HasValue && AvailableSlots.Any())
+        {
+            <div class="mb-3">
+                <label class="form-label fw-bold">Horarios disponibles</label>
+                <div class="d-grid gap-2" style="grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));">
+                    @foreach (var slot in AvailableSlots)
+                    {
+                        <button class="btn @(slot == SelectedSlot ? "btn-success" : "btn-outline-primary") btn-sm"
+                                @onclick="() => SelectSlot(slot)">
+                            @slot.ToString("HH:mm")
+                        </button>
+                    }
+                </div>
+            </div>
+        }
+        else if (SelectedDate.HasValue)
+        {
+            <div class="alert alert-light border text-center">
+                <small class="text-muted">Seleccioná un día para ver los horarios.</small>
+            </div>
+        }
     }
 </div>
 
 @code {
-    [Inject] private AvailabilityMockService AvailabilityService { get; set; } = default!;
+    [Inject] private IAvailabilityService AvailabilityService { get; set; } = default!;
 
     [Parameter] public string ProfessionalId { get; set; } = string.Empty;
+    [Parameter] public Guid ServiceId { get; set; }
     [Parameter] public int DurationMinutes { get; set; } = 60;
     [Parameter] public EventCallback<DateTime> OnSlotSelected { get; set; }
 
     private static readonly CultureInfo LocalCulture = new("es-AR");
     
-    private DateTime SelectedDate { get; set; } = DateTime.Today;
+    private DateTime? SelectedDate { get; set; }
     private DateTime? SelectedSlot { get; set; }
     
-    private List<ProfessionalAvailability> Availabilities { get; set; } = new();
+    // Cache de slots por día
+    private Dictionary<DateTime, List<DateTime>> SlotsByDay { get; set; } = new();
+    private List<DateTime> AvailableDays { get; set; } = new();
     private List<DateTime> AvailableSlots { get; set; } = new();
-    private bool IsLoading { get; set; } = true;
+    private bool IsLoadingDays { get; set; } = true;
 
     protected override async Task OnInitializedAsync()
     {
-        await LoadAvailability();
-        await GenerateSlots();
+        await PreloadAvailability();
     }
 
-    private async Task LoadAvailability()
+    private async Task PreloadAvailability()
     {
-        IsLoading = true;
-        // Simulate network delay
-        await Task.Delay(500);
-        Availabilities = await AvailabilityService.GetAvailabilityAsync(ProfessionalId);
-        IsLoading = false;
+        if (ServiceId == Guid.Empty) return;
+
+        IsLoadingDays = true;
+
+        // Consultar los 14 días en paralelo
+        var tasks = new List<Task<(DateTime Date, List<DateTime> Slots)>>();
+        for (int i = 0; i < 14; i++)
+        {
+            var date = DateTime.Today.AddDays(i);
+            tasks.Add(LoadDaySlots(date));
+        }
+
+        var results = await Task.WhenAll(tasks);
+
+        SlotsByDay.Clear();
+        foreach (var (date, slots) in results)
+        {
+            if (slots.Any())
+            {
+                SlotsByDay[date.Date] = slots;
+            }
+        }
+
+        AvailableDays = SlotsByDay.Keys.OrderBy(d => d).ToList();
+
+        // Auto-seleccionar el primer día disponible
+        if (AvailableDays.Any())
+        {
+            SelectedDate = AvailableDays.First();
+            AvailableSlots = SlotsByDay[SelectedDate.Value.Date];
+        }
+
+        IsLoadingDays = false;
     }
 
-    private bool IsDateAvailable(DateTime date)
+    private async Task<(DateTime Date, List<DateTime> Slots)> LoadDaySlots(DateTime date)
     {
-        // Check if the professional works on this specific date
-        return Availabilities.Any(a => a.Date.Date == date.Date);
+        try
+        {
+            var allSlots = await AvailabilityService.GetAvailableSlotsAsync(ProfessionalId, date, ServiceId);
+            var filtered = allSlots.Where(s => s.Minute == 0).OrderBy(s => s).ToList();
+            return (date, filtered);
+        }
+        catch
+        {
+            return (date, new List<DateTime>());
+        }
     }
 
-    private async Task SelectDate(DateTime date)
+    private void SelectDate(DateTime date)
     {
         SelectedDate = date;
         SelectedSlot = null;
-        await GenerateSlots();
-    }
-
-    private Task GenerateSlots()
-    {
-        AvailableSlots.Clear();
-        // Match by Date
-        var availability = Availabilities.FirstOrDefault(a => a.Date.Date == SelectedDate.Date);
-        
-        if (availability != null)
-        {
-            AvailableSlots = AvailabilityService.GenerateTimeSlots(SelectedDate, availability, DurationMinutes);
-        }
-        
-        return Task.CompletedTask;
+        AvailableSlots = SlotsByDay.ContainsKey(date.Date) ? SlotsByDay[date.Date] : new();
     }
 
     private async Task SelectSlot(DateTime slot)
@@ -118,3 +147,4 @@
         await OnSlotSelected.InvokeAsync(slot);
     }
 }
+

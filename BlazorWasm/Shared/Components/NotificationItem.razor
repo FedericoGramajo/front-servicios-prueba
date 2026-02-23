@@ -1,0 +1,96 @@
+@using ClientLibrary.Models.Notifications
+@using ClientLibrary.Services.Contracts
+@inject NavigationManager Navigation
+@inject INotificationService NotificationService
+
+<div class="notification-item p-3 border-bottom position-relative @(Notification.IsRead ? "notif-read" : "notif-unread")" 
+     @onclick="HandleClick" style="cursor: pointer;">
+    <div class="d-flex gap-3 align-items-start">
+        <div class="notification-icon rounded-circle d-flex align-items-center justify-content-center flex-shrink-0" 
+             style="width: 40px; height: 40px; background: @(Notification.IsRead ? "#f0f0f0" : "#e8f5e9"); color: @(Notification.IsRead ? "#aaa" : "#4a7c59");">
+            <i class="@GetIcon()"></i>
+        </div>
+        <div class="flex-grow-1 overflow-hidden">
+            <div class="d-flex justify-content-between align-items-center mb-1">
+                <h6 class="mb-0 small text-uppercase fw-bold letter-spacing-sm" style="color: @(Notification.IsRead ? "#999" : "#4a7c59");">@Notification.Title</h6>
+                <span class="text-muted" style="font-size: 0.75rem;">@Notification.CreatedAt.ToString("g")</span>
+            </div>
+            <p class="mb-0 text-truncate-2" style="font-size: 0.95rem; line-height: 1.4; color: @(Notification.IsRead ? "#999" : "#333");">
+                @Notification.Message
+            </p>
+        </div>
+        @if (!Notification.IsRead)
+        {
+            <div class="unread-dot rounded-circle bg-success shadow-sm flex-shrink-0" style="width: 10px; height: 10px; margin-top: 6px;"></div>
+        }
+    </div>
+</div>
+
+<style>
+    .notif-unread {
+        background-color: rgba(74, 124, 89, 0.08);
+        border-left: 3px solid #4a7c59 !important;
+        font-weight: 600;
+        transition: all 0.4s ease;
+    }
+    .notif-unread:hover {
+        background-color: rgba(74, 124, 89, 0.14);
+    }
+    .notif-read {
+        background-color: #fff;
+        border-left: 3px solid transparent !important;
+        opacity: 0.75;
+        transition: all 0.4s ease;
+    }
+    .notif-read:hover {
+        opacity: 1;
+        background-color: #f8f9fa;
+    }
+    .notification-item:hover {
+        background-color: #f8f9fa;
+    }
+    .text-truncate-2 {
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+    }
+    .letter-spacing-sm {
+        letter-spacing: 0.5px;
+    }
+    .unread-dot {
+        animation: pulse-dot 2s infinite;
+    }
+    @@keyframes pulse-dot {
+        0%, 100% { opacity: 1; transform: scale(1); }
+        50% { opacity: 0.5; transform: scale(0.8); }
+    }
+</style>
+
+@code {
+    [Parameter, EditorRequired] public Notification Notification { get; set; } = default!;
+    [Parameter] public EventCallback<Guid> OnRead { get; set; }
+
+    private async Task HandleClick()
+    {
+        if (!Notification.IsRead)
+        {
+            await NotificationService.MarkAsReadAsync(Notification.Id);
+            await OnRead.InvokeAsync(Notification.Id);
+        }
+
+        if (!string.IsNullOrEmpty(Notification.ActionUrl))
+        {
+            Navigation.NavigateTo(Notification.ActionUrl);
+        }
+    }
+
+    private string GetIcon()
+    {
+        var title = Notification.Title?.ToLower() ?? "";
+        if (title.Contains("booking") || title.Contains("reserva")) return "fa-solid fa-calendar-check";
+        if (title.Contains("cancel") || title.Contains("cancelada")) return "fa-solid fa-calendar-xmark";
+        if (title.Contains("welcome") || title.Contains("bienvenido")) return "fa-solid fa-hand-wave";
+        return "fa-solid fa-bell";
+    }
+}

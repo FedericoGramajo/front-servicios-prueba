@@ -95,9 +95,14 @@
                         </div>
                         <div class="row mb-3">
                             <div class="col-md-6">
-                                <label class="form-label">Duración Estimada (min)</label>
-                                <InputNumber class="form-control" @bind-Value="newService.EstimatedDuration" placeholder="Ej. 60" />
-                                <ValidationMessage For="@(() => newService.EstimatedDuration)" />
+                                <label class="form-label">Duración Estimada</label>
+                                <select class="form-select" value="@newService.EstimatedDuration" @onchange="e => newService.EstimatedDuration = int.TryParse(e.Value?.ToString(), out var v) ? v : 60">
+                                    <option value="60">1 hora</option>
+                                    <option value="120">2 horas</option>
+                                    <option value="180">3 horas</option>
+                                    <option value="240">4 horas</option>
+                                    <option value="300">5 horas</option>
+                                </select>
                             </div>
                             <div class="col-md-6 d-flex align-items-end">
                                 <div class="form-check form-switch mb-2">

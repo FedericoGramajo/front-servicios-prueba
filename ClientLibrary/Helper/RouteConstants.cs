@@ -22,6 +22,7 @@ namespace ClientLibrary.Helper
         // User Account
         public const string Profile = "/perfil";
         public const string UserServices = "/mis-servicios";
+        public const string MyNotifications = "/notificaciones";
 
         // Dashboards
         public const string ProfessionalDashboard = "/professional/dashboard";
