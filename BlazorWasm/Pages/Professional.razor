@@ -157,7 +157,7 @@
                 if (ProfessionalData != null)
                 {
                     var services = await ServiceService.GetByProfessionalAsync(Slug);
-                    ServicesByCategory = services.GroupBy(s => s.CategoryName);
+                    ServicesByCategory = services.Where(s => s.Status).GroupBy(s => s.CategoryName);
                 }
             }
         }

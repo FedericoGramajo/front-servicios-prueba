@@ -1,4 +1,5 @@
 @attribute [Route(RouteConstants.UserServices)]
+@attribute [Authorize(Roles = Constant.Administration.CustomerRole)]
 @using System.Collections.Generic
 @using System.Globalization
 @using ClientLibrary.Helper

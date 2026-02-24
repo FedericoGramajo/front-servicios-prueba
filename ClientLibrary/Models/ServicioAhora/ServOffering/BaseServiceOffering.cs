@@ -18,7 +18,7 @@ namespace ClientLibrary.Models.ServicioAhora.ServOffering
             [Required(ErrorMessage = "El precio del Servicio es obligatoria."), Range(0, double.MaxValue)]
             public decimal BasePrice { get; set; }
 
-            [Required(ErrorMessage = "La duracion del Servicio es obligatoria."), Range(1, int.MaxValue)]
+            [Range(1, int.MaxValue)]
             public int? EstimatedDuration { get; set; }
 
             public bool Status { get; set; } = true;

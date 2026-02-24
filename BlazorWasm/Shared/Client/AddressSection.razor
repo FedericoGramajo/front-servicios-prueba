@@ -94,18 +94,20 @@
                             <div class="col-12">
                                 <label class="form-label fw-semibold">Tipo (Etiqueta)</label>
                                 <InputSelect class="form-select" @bind-Value="currentAddress.Type">
-                                    <option value="Casa">Casa 🏠</option>
-                                    <option value="Trabajo">Trabajo 💼</option>
-                                    <option value="Otro">Otro 📍</option>
+                                    <option value="Casa">Casa</option>
+                                    <option value="Trabajo">Trabajo</option>
+                                    <option value="Otro">Otro</option>
                                 </InputSelect>
                             </div>
                             <div class="col-12 mt-3">
-                                <div class="form-check form-switch card p-3 bg-light border-0">
-                                    <InputCheckbox class="form-check-input" @bind-Value="currentAddress.IsMain" id="isMainCheck" />
-                                    <label class="form-check-label ms-2 fw-medium" for="isMainCheck">
-                                        Establecer como dirección principal
-                                    </label>
-                                    <div class="form-text mt-1">Se usará por defecto en tus nuevas reservas.</div>
+                                <div class="card p-3 bg-light border-0">
+                                    <div class="form-check form-switch mb-0" style="padding-left: 3.5em;">
+                                        <InputCheckbox class="form-check-input" @bind-Value="currentAddress.IsMain" id="isMainCheck" style="width: 2.5em; height: 1.25em; cursor: pointer;" />
+                                        <label class="form-check-label ms-2 fw-medium" for="isMainCheck" style="cursor: pointer; margin-top: 2px; display: block;">
+                                            Establecer como dirección principal
+                                        </label>
+                                        <div class="form-text mt-1">Se usará por defecto en tus nuevas reservas.</div>
+                                    </div>
                                 </div>
                             </div>
                         </div>
